@@ -4,4 +4,11 @@
   hosts:
   - localhost
   tasks:
-    - shell: echo 'hello world'
+    - name: create new dir
+      file:
+        path: "/tmp/testap/"
+        state: directory
+    - name: copy text file
+      copy:
+        src:  "docker_sandbox/docker_debian/text"
+        dest: "/tmp/testap/"
