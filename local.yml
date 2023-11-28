@@ -1,3 +1,7 @@
-- hosts: all
+
+---
+- name: test pull
+  hosts:
+  - localhost
   tasks:
     - shell: echo 'hello world'
