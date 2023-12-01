@@ -3,13 +3,14 @@
 - name: Ensure requirements in place
   package:
     name:
-      - jinja2<3.1
+      - python3-pip
       - libguestfs
       - python3-libvirt
     state: present
   become: true
 
-
+- name: Install Jinja2
+  shell: pip3 install "Jinja2<3.1"
 - name: Install community.libvirt
   shell: ansible-galaxy collection install community.libvirt
    
