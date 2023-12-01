@@ -1,5 +1,5 @@
 #FROM debian:10
-#FROM debian:11-slim
+FROM debian:11-slim
 
 LABEL	maintainer="dispelk9@gmail.com"
 
