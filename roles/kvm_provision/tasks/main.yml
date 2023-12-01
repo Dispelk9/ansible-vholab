@@ -7,6 +7,9 @@
       - python3-libvirt
     state: present
   become: true
+- name: Install community.libvirt
+  shell: ansible-galaxy collection install community.libvirt
+   
 - name: Get VMs list
   community.libvirt.virt:
     command: list_vms
