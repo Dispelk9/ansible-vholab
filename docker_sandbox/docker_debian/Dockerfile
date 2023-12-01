@@ -1,20 +1,18 @@
 #FROM debian:10
-FROM debian:11-slim
+#FROM debian:11-slim
 
-LABEL   maintainer="dispelk9@gmail.com"
-ENV     ANSIBLE_VERSION 2.9.17
+LABEL	maintainer="dispelk9@gmail.com"
 
-RUN apt update
+RUN apt update && apt upgrade
 
 RUN apt install sudo locales --yes 
 
-RUN apt install -y python3
-RUN apt install -y python3-pip
+RUN apt install -y python3 python3-pip git ansible
+
+#for debian11
+#RUN apt install -y cron
     
-RUN pip3 install --upgrade pip;                 \
-    pip3 install "ansible==${ANSIBLE_VERSION}"; \
-    pip3 install ansible
 
-RUN apt install -y git
+#for debian 11    
+#   pip3 install "Jinja2<3.1"
 
-COPY text /tmp/test

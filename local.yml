@@ -1,6 +1,6 @@
 
 ---
-- name: test pull
+- name: Testing ansible-pull in new VM/Container
   hosts:
   - localhost
   tasks:
@@ -8,7 +8,7 @@
       file:
         path: "/tmp/testap/"
         state: directory
-    - name: copy text file
+    - name: copy Dockerfile
       copy:
-        src:  "docker_sandbox/docker_debian/text"
+        src:  "docker_sandbox/docker_debian/Dockerfile"
         dest: "/tmp/testap/"
