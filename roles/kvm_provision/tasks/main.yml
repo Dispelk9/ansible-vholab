@@ -3,10 +3,13 @@
 - name: Ensure requirements in place
   package:
     name:
-      - guestfs-tools
+      - jinja2<3.1
+      - libguestfs
       - python3-libvirt
     state: present
   become: true
+
+
 - name: Install community.libvirt
   shell: ansible-galaxy collection install community.libvirt
    
