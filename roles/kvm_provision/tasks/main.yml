@@ -52,7 +52,7 @@
           --root-password password:{{ vm_root_pass }} \
           --ssh-inject 'root:file:{{ ssh_key }}' \
           --uninstall cloud-init --selinux-relabel
-        when: copy_results is changed
+        #when: copy_results is changed
       - name: Define vm
         community.libvirt.virt:
           command: define
