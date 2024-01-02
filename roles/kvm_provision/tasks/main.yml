@@ -61,7 +61,7 @@
           virt-install --name {{ vm_name }} \
           --virt-type kvm --memory {{ vm_ram_mb }}  --vcpus {{ vm_vcpus }} \
           --boot hd,menu=on \
-          --disk path= {{ libvirt_pool_dir }}/{{ vm_name }}.qcow2,device=disk \
+          --disk path={{ libvirt_pool_dir }}/{{ vm_name }}.qcow2,device=disk \
           --graphics none
         #when: copy_results is changed
       - name: Define vm
