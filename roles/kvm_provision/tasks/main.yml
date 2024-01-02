@@ -21,6 +21,10 @@
   shell: pip3 install "Jinja2<3.1"
 - name: Install community.libvirt
   shell: ansible-galaxy collection install community.libvirt
+
+- name: Include vars of kvm_provision
+  include_vars:
+    file: default/main.yml
    
 - name: Get VMs list
   community.libvirt.virt:
