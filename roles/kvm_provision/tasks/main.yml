@@ -16,11 +16,11 @@
 - name: Install community.libvirt
   shell: ansible-galaxy collection install community.libvirt
    
-- name: Get VMs list
-  community.libvirt.virt:
-    command: list_vms
-  register: existing_vms
-  changed_when: no
+# - name: Get VMs list
+#   community.libvirt.virt:
+#     command: list_vms
+#   register: existing_vms
+#   changed_when: no
 - name: Create VM if not exists
   block:
       - name: Download base image
