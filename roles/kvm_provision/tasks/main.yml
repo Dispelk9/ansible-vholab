@@ -4,8 +4,10 @@
   package:
     name:
       - python3-pip
-      - libguestfs
+      #- libguestfs
       - python3-libvirt
+      - ansible
+      - git
     state: present
   become: true
 
