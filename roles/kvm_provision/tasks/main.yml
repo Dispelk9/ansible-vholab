@@ -59,7 +59,7 @@
       - name: Configure the image
         command: |
           virt-install --name {{ vm_name }} \
-          --virt-type kvm --memory {{ vm_ram_mb }}  --vcpus {{ vm_vcpus }}\
+          --virt-type kvm --memory {{ vm_ram_mb }}  --vcpus {{ vm_vcpus }} \
           --boot hd,menu=on \
           --disk path= {{ libvirt_pool_dir }}/{{ vm_name }}.qcow2,device=disk \
           --graphics none
