@@ -8,6 +8,12 @@
       - python3-libvirt
       - ansible
       - git
+      - qemu
+      - qemu-kvm
+      - libvirt-clients
+      - libvirt-daemon-system
+      - virtinst
+      - bridge-utils
     state: present
   become: true
 
