@@ -44,7 +44,7 @@
           force: no
           remote_src: yes 
           mode: 0660
-        register: copy_results
+        #register: copy_results
       - name: Configure the image
         command: |
           virt-customize -a {{ libvirt_pool_dir }}/{{ vm_name }}.qcow2 \
