@@ -1,60 +1,9 @@
 <domain type='kvm'>
-  <os>
-    <type arch='x86_64' machine='pc-q35-5.2'>hvm</type>
-    <boot dev='hd'/>
-  </os>
-  <cpu mode='host-model' check='none'/>
-  <devices>
-    <emulator>/usr/bin/qemu-system-x86_64</emulator>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='qcow2'/>
-      <source file='{{ libvirt_pool_dir }}/{{ vm_name }}.qcow2'/>
-      <target dev='vda' bus='virtio'/>
-      <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
-    </disk>
-    <interface type='network'>
-      <source network='{{ vm_net }}'/>
-      <model type='virtio'/>
-      <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
-    </interface>
-    <channel type='unix'>
-      <target type='virtio' name='org.qemu.guest_agent.0'/>
-      <address type='virtio-serial' controller='0' bus='0' port='1'/>
-    </channel>
-    <channel type='spicevmc'>
-      <target type='virtio' name='com.redhat.spice.0'/>
-      <address type='virtio-serial' controller='0' bus='0' port='2'/>
-    </channel>
-    <input type='tablet' bus='usb'>
-      <address type='usb' bus='0' port='1'/>
-    </input>
-    <input type='mouse' bus='ps2'/>
-    <input type='keyboard' bus='ps2'/>
-    <graphics type='spice' autoport='yes'>
-      <listen type='address'/>
-      <image compression='off'/>
-    </graphics>
-    <video>
-      <model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1' primary='yes'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0'/>
-    </video>
-    <memballoon model='virtio'>
-      <address type='pci' domain='0x0000' bus='0x06' slot='0x00' function='0x0'/>
-    </memballoon>
-    <rng model='virtio'>
-      <backend model='random'>/dev/urandom</backend>
-      <address type='pci' domain='0x0000' bus='0x07' slot='0x00' function='0x0'/>
-    </rng>
-  </devices>
-</domain>
-
-
-<domain type='kvm' id='2'>
   <name>{{ vm_name }}</name>
-  <uuid>0fbe010f-c1e0-4ff7-a5fa-469736fde826</uuid>
+  <uuid>32b298ca-76fb-450b-b149-b4db33adb763</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
-      <libosinfo:os id="http://ubuntu.com/ubuntu/22.04"/>
+      <libosinfo:os id="http://ubuntu.com/ubuntu/18.04"/>
     </libosinfo:libosinfo>
   </metadata>
   <memory unit='KiB'>{{ vm_ram_mb }}</memory>
@@ -90,18 +39,14 @@
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2'/>
       <source file='{{ libvirt_pool_dir }}/{{ vm_name }}.qcow2' index='2'/>
-      <backingStore type='file' index='3'>
-        <format type='qcow2'/>
-        <source file='/var/lib/libvirt/images/kvmfile/vhodocker/jammy-server-cloudimg-amd64.img'/>
-        <backingStore/>
-      </backingStore>
+      <backingStore/>
       <target dev='vda' bus='virtio'/>
       <alias name='virtio-disk0'/>
       <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
     </disk>
     <disk type='file' device='disk'>
       <driver name='qemu' type='raw'/>
-      <source file='/var/lib/libvirt/images/kvmfile/vhodocker/vhodocker.img' index='1'/>
+      <source file='{{ libvirt_pool_dir }}/login.img' index='1'/>
       <backingStore/>
       <target dev='vdb' bus='virtio'/>
       <alias name='virtio-disk1'/>
@@ -207,9 +152,9 @@
       <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
     </controller>
     <interface type='network'>
-      <mac address='52:54:00:57:aa:0f'/>
-      <source network='{{ vm_net }}' portid='da37f8a0-5dbb-4b26-8221-ff4419d068aa' bridge='virbr0'/>
-      <target dev='vnet1'/>
+      <mac address='52:54:00:68:bc:e0'/>
+      <source network='{{ vm_net }}' portid='75c7815e-185c-4edb-82e3-fe6ec925dff6' bridge='virbr0'/>
+      <target dev='vnet6'/>
       <model type='virtio'/>
       <alias name='net0'/>
       <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
@@ -227,7 +172,7 @@
       <alias name='serial0'/>
     </console>
     <channel type='unix'>
-      <source mode='bind' path='/var/lib/libvirt/qemu/channel/target/domain-2-vhodocker/org.qemu.guest_agent.0'/>
+      <source mode='bind' path='/var/lib/libvirt/qemu/channel/target/domain-7-vho_ubuntu_kvm/org.qemu.guest_agent.0'/>
       <target type='virtio' name='org.qemu.guest_agent.0' state='disconnected'/>
       <alias name='channel0'/>
       <address type='virtio-serial' controller='0' bus='0' port='1'/>
@@ -250,12 +195,13 @@
     </rng>
   </devices>
   <seclabel type='dynamic' model='apparmor' relabel='yes'>
-    <label>libvirt-0fbe010f-c1e0-4ff7-a5fa-469736fde826</label>
-    <imagelabel>libvirt-0fbe010f-c1e0-4ff7-a5fa-469736fde826</imagelabel>
+    <label>libvirt-32b298ca-76fb-450b-b149-b4db33adb763</label>
+    <imagelabel>libvirt-32b298ca-76fb-450b-b149-b4db33adb763</imagelabel>
   </seclabel>
   <seclabel type='dynamic' model='dac' relabel='yes'>
     <label>+64055:+109</label>
     <imagelabel>+64055:+109</imagelabel>
   </seclabel>
 </domain>
+
 
