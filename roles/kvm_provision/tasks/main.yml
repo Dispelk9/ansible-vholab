@@ -62,7 +62,8 @@
           --virt-type kvm --memory {{ vm_ram_mb }}  --vcpus {{ vm_vcpus }} \
           --boot hd,menu=on \
           --disk path={{ libvirt_pool_dir }}/{{ vm_name }}.qcow2,device=disk \
-          --graphics none
+          --graphics none \
+          --os-type Linux --os-variant ubuntu18.04
         #when: copy_results is changed
       - name: Define vm
         community.libvirt.virt:
