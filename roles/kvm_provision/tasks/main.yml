@@ -35,10 +35,10 @@
   block:
       - name: Download base image
         get_url:
-          #url: "{{ base_image_url }}"
-          url:  https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img
-          #dest: "/tmp/{{ base_image_name }}"
-          dest: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
+          url: "{{ base_image_url }}"
+          #url:  https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img
+          dest: "/tmp/{{ base_image_name }}"
+          #dest: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
           #checksum: "sha256:{{ base_image_sha }}"
       - name: Copy base image to libvirt directory
         copy:
@@ -48,11 +48,21 @@
           force: no
           remote_src: yes 
           mode: 0660
-      - name: Copy login info to libvirt directory
+      - name: Copy login info to tmp directory
         template:
-          src: templates/login.img
-          dest: "{{ libvirt_pool_dir }}/login.img"
+          src: templates/login.txt
+          dest: /tmp/login.txt
           #src: "/tmp/{{ base_image_name }}"
+          force: no
+          remote_src: yes 
+          mode: 0660
+        #register: copy_results
+      - name: Converting login info to disk image
+        shell: cloud-localds login.img login.txt
+      - name: Copy login info from tmp directory
+        copy:
+          src: /tmp/login.img
+          dest: "{{ libvirt_pool_dir }}/login.img"
           force: no
           remote_src: yes 
           mode: 0660
@@ -84,7 +94,15 @@
 
 - name: Ensure temporary file is deleted
   file:
-    path: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
-    #path: "/tmp/{{ base_image_name }}"
+    #path: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
+    path: "/tmp/{{ base_image_name }}"
     state: absent
   when: cleanup_tmp | bool
+
+- name: Ensure temporary login is deleted
+  file:
+    path: "{{item}}"
+    state: absent
+  with_items:
+    - /tmp/login.img
+    - /tmp/login.txt
