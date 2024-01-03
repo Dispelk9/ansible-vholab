@@ -28,7 +28,7 @@
 
 - name: Print base_image_url
   debug:
-    msg: {{ base_image_url }}
+    msg: "{{ base_image_url }}"
    
 - name: Get VMs list
   community.libvirt.virt:
@@ -40,7 +40,7 @@
   block:
       - name: Download base image
         get_url:
-          url: {{ base_image_url }}
+          url: "{{ base_image_url }}"
           #url:  https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img
           dest: /tmp/{{ base_image_name }}
           #dest: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
@@ -90,7 +90,7 @@
 
 - name: Ensure VM is started
   community.libvirt.virt:
-    name: {{ vm_name }}
+    name: "{{ vm_name }}"
     state: running
   register: vm_start_results
   until: "vm_start_results is success"
