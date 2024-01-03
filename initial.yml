@@ -5,7 +5,7 @@
   become: yes
   vars:
     pool_dir: "/var/lib/libvirt/images"
-    vm: vho_ubuntu_kvm
+    vm: vhoukvm
     vcpus: 2
     ram_mb: 1024
     cleanup: no
