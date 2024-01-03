@@ -38,15 +38,12 @@
       - name: Download base image
         get_url:
           url: "{{ base_image_url }}"
-          #url:  https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img
           dest: "/tmp/{{ base_image_name }}"
-          #dest: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
           #checksum: "sha256:{{ base_image_sha }}"
       - name: Copy base image to libvirt directory
         copy:
           src: "/tmp/{{ base_image_name }}"
           dest: "{{ libvirt_pool_dir }}/{{ vm_name }}.qcow2"
-          #src: "/tmp/{{ base_image_name }}"
           force: no
           remote_src: yes 
           mode: 0660
@@ -54,11 +51,9 @@
         template:
           src: templates/login.txt
           dest: /tmp/login.txt
-          #src: "/tmp/{{ base_image_name }}"
           force: no
           remote_src: yes 
           mode: 0660
-        #register: copy_results
       - name: Converting login info to disk image
         shell: cloud-localds /tmp/login.img /tmp/login.txt
       - name: Copy login.img info from tmp directory
@@ -68,7 +63,6 @@
           force: no
           remote_src: yes 
           mode: 0660
-        #register: copy_results
       - name: Configure the image
         command: |
           virt-install --name {{ vm_name }} \
@@ -78,11 +72,10 @@
           --disk path={{ libvirt_pool_dir }}/login.img,format=raw \
           --graphics none \
           --os-variant ubuntu18.04
-        #when: copy_results is changed
-      - name: Define vm
-        community.libvirt.virt:
-          command: define
-          xml: "{{ lookup('template', 'vm-template.xml.j2') }}"
+      # - name: Define vm
+      #   community.libvirt.virt:
+      #     command: define
+      #     xml: "{{ lookup('template', 'vm-template.xml.j2') }}"
   when: "vm_name not in existing_vms.list_vms"
 
 - name: Ensure VM is started
@@ -96,7 +89,6 @@
 
 - name: Ensure temporary file is deleted
   file:
-    #path: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
     path: /tmp/{{ base_image_name }}
     state: absent
   when: cleanup_tmp | bool
