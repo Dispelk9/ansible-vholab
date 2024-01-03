@@ -21,7 +21,7 @@
   shell: pip3 install "Jinja2<3.1"
 - name: Install community.libvirt
   shell: ansible-galaxy collection install community.libvirt
-   
+
 - name: Get VMs list
   community.libvirt.virt:
     command: list_vms
@@ -34,12 +34,12 @@
         get_url:
           url: "{{ base_image_url }}"
           #url:  https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img
-          dest: /tmp/{{ base_image_name }}
+          dest: "/tmp/{{ base_image_name }}"
           #dest: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
           #checksum: "sha256:{{ base_image_sha }}"
       - name: Copy base image to libvirt directory
         copy:
-          src: /tmp/ubuntu-18.04-server-cloudimg-amd64.img
+          src: "/tmp/{{ base_image_name }}"
           dest: "{{ libvirt_pool_dir }}/{{ vm_name }}.qcow2"
           #src: "/tmp/{{ base_image_name }}"
           force: no
