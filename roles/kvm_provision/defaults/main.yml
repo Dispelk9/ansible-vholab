@@ -1,6 +1,6 @@
 # defaults file for kvm_provision
-base_image_name: "ubuntu-18.04-server-cloudimg-amd64.img"
-base_image_url: "https://cloud-images.ubuntu.com/releases/bionic/release/{{ base_image_name }}"
+base_image_name: "jammy-server-cloudimg-amd64.img"
+base_image_url: "https://cloud-images.ubuntu.com/jammy/current/{{ base_image_name }}"
 #base_image_sha: b9b621b26725ba95442d9a56cbaa054784e0779a9522ec6eafff07c6e6f717ea
 libvirt_pool_dir: "/var/lib/libvirt/images"
 vm_name: vho_ubuntu_kvm
