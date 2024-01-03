@@ -60,8 +60,8 @@
           mode: 0660
         #register: copy_results
       - name: Converting login info to disk image
-        shell: cloud-localds login.img login.txt
-      - name: Copy login info from tmp directory
+        shell: cloud-localds /tmp/login.img /tmp/login.txt
+      - name: Copy login.img info from tmp directory
         copy:
           src: /tmp/login.img
           dest: "{{ libvirt_pool_dir }}/login.img"
