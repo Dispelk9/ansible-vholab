@@ -7,7 +7,7 @@
     pool_dir: "/var/lib/libvirt/images"
     vm: vho_ubuntu_kvm
     vcpus: 2
-    ram_mb: 2048
+    ram_mb: 1024
     cleanup: no
     net: default
     ssh_pub_key: "/home/vho/.ssh/id_rsa.pub"
