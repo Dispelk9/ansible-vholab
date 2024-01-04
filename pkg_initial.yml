@@ -1,0 +1,9 @@
+---
+- name: Configure basics kvm
+  hosts: all
+  roles:
+  - common
+- name: Configure vhodocker
+  hosts: vhodocker
+  roles:
+  - docker
