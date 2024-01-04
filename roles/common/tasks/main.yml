@@ -1,15 +1,20 @@
 - name: Update APT Cache
   apt:
+    become: yes
+    become_user: root
     update_cache: yes
     force_apt_get: yes
-
+  
 - name: Remove apt lock file
   file:
+    become: yes
+    become_user: root
     state: absent
     path: "/var/lib/dpkg/lock"
 
 - name: Install packages
   apt:
+    become: yes
+    become_user: root  
     package:
     - cloud-image-utils
-  become_user: root
