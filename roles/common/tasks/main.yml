@@ -2,3 +2,4 @@
   apt:
     package:
     - cloud-image-utils
+  become_user: root
