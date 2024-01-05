@@ -39,14 +39,16 @@
         get_url:
           url: "{{ base_image_url }}"
           dest: "/tmp/{{ base_image_name }}"
-          #checksum: "sha256:{{ base_image_sha }}"
       - name: Create directory for {{ vm_name }}
         file:
           path: "{{ base_image_folder }}"
           state: directory
-      - name: Copy base image to libvirt directory
+      - name: Create qcow2 with {{ qcow2_size }}
+        command: |
+          qemu-img create -b /tmp/{{ base_image_name }} -F qcow2 -f qcow2 {{ vm_name }}.qcow2 {{qcow2_size}}
+      - name: Copy qcow2 image to libvirt directory
         copy:
-          src: "/tmp/{{ base_image_name }}"
+          src: "/tmp/{{ vm_name }}.qcow2"
           dest: "{{ base_image_folder }}/{{ vm_name }}.qcow2"
           force: no
           remote_src: yes 
@@ -104,3 +106,4 @@
   with_items:
     - /tmp/login.img
     - /tmp/login.txt
+    - /tmp/{{ vm_name }}.qcow2
