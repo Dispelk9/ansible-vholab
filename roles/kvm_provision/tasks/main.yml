@@ -40,10 +40,14 @@
           url: "{{ base_image_url }}"
           dest: "/tmp/{{ base_image_name }}"
           #checksum: "sha256:{{ base_image_sha }}"
+      - name: Create directory for {{ vm_name }}
+        file:
+          path: "{{ base_image_folder }}"
+          state: directory
       - name: Copy base image to libvirt directory
         copy:
           src: "/tmp/{{ base_image_name }}"
-          dest: "{{ libvirt_pool_dir }}/{{ vm_name }}.qcow2"
+          dest: "{{ base_image_folder }}/{{ vm_name }}.qcow2"
           force: no
           remote_src: yes 
           mode: 0660
@@ -59,7 +63,7 @@
       - name: Copy login.img info from tmp directory
         copy:
           src: /tmp/login.img
-          dest: "{{ libvirt_pool_dir }}/login.img"
+          dest: "{{ base_image_folder }}/login.img"
           force: no
           remote_src: yes 
           mode: 0660
@@ -68,8 +72,8 @@
           virt-install --name {{ vm_name }} \
           --virt-type kvm --memory {{ vm_ram_mb }}  --vcpus {{ vm_vcpus }} \
           --boot hd,menu=on \
-          --disk path={{ libvirt_pool_dir }}/{{ vm_name }}.qcow2,device=disk \
-          --disk path={{ libvirt_pool_dir }}/login.img,format=raw \
+          --disk path={{ base_image_folder }}/{{ vm_name }}.qcow2,device=disk \
+          --disk path={{ base_image_folder }}/login.img,format=raw \
           --graphics none \
           --os-variant ubuntu18.04
       # - name: Define vm
