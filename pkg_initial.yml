@@ -1,5 +1,5 @@
 ---
-- name: Configure basics kvm
+- name: Configure basics kvms
   hosts: all
   roles:
   - common

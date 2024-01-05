@@ -2,8 +2,9 @@
 base_image_name: "jammy-server-cloudimg-amd64.img"
 base_image_url: "https://cloud-images.ubuntu.com/jammy/current/{{ base_image_name }}"
 #base_image_sha: b9b621b26725ba95442d9a56cbaa054784e0779a9522ec6eafff07c6e6f717ea
-libvirt_pool_dir: "/var/lib/libvirt/images"
-vm_name: vho_ubuntu_kvm
+#libvirt_pool_dir: "/var/lib/libvirt/images/kvmfile"
+base_image_folder: "/var/lib/libvirt/images/kvmfile/{{ vm_name }}"
+vm_name: vhocloud
 vm_vcpus: 2
 vm_ram_mb: 1024
 vm_net: default
