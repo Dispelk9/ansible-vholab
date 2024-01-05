@@ -9,4 +9,4 @@ vm_net: default
 cleanup_tmp: no
 ssh_key: /root/.ssh/id_rsa.pub
 qcow2_size: 4G
-os_variant: 22.04
+os_variant: ubuntu22.04
