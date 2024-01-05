@@ -5,7 +5,7 @@ base_image_url: "https://cloud-images.ubuntu.com/jammy/current/{{ base_image_nam
 libvirt_pool_dir: "/var/lib/libvirt/images"
 vm_name: vho_ubuntu_kvm
 vm_vcpus: 2
-vm_ram_mb: 1024
+vm_ram_mb: 2048
 vm_net: default
 cleanup_tmp: no
 ssh_key: /root/.ssh/id_rsa.pub

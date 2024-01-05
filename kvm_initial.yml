@@ -5,9 +5,9 @@
   become: yes
   vars:
     pool_dir: "/var/lib/libvirt/images"
-    vm: vhoukvm
+    vm: vhocloud
     vcpus: 2
-    ram_mb: 1024
+    ram_mb: 2048
     cleanup: no
     net: default
     ssh_pub_key: "/home/vho/.ssh/id_rsa.pub"
