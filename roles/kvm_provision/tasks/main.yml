@@ -77,7 +77,7 @@
           --disk path={{ base_image_folder }}/{{ vm_name }}.qcow2,device=disk \
           --disk path={{ base_image_folder }}/login.img,format=raw \
           --graphics none \
-          --os-variant ubuntu18.04
+          --os-variant {{ os-variant }}
       # - name: Define vm
       #   community.libvirt.virt:
       #     command: define
