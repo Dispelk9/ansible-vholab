@@ -1,0 +1,9 @@
+#!/bin/bash
+sudo -i
+current_dir=$( pwd )
+playbook_dir=/home/vho/Documents/ansible-pull-docker/
+
+cd "$playbook_dir"
+git pull
+
+ansible-playbook /home/vho/Documents/ansible-pull-docker/pkg_initial.yml
