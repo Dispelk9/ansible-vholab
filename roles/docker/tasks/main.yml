@@ -49,4 +49,5 @@
     image: "{{ default_container_image }}"
     command: "{{ default_container_command }}"
     state: present
+    container_default_behavior: "compatibility"
   with_sequence: count={{ container_count }}
