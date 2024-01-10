@@ -14,7 +14,9 @@
     dest: "/etc/apache2/sites-available/{{project_config}}"
     mode: 0660
 - name: Activating VirtualHost file
-  shell: sudo a2ensite /etc/apache2/sites-available/{{project_config}}
+  shell: cd /etc/apache2/sites-available/ | a2ensite {{project_config}}
+- name: Deactivating default site
+  shell: a2dissite 000-default.conf
 - name: Ensure apache is running
   service:
     name: apache2
