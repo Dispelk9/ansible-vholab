@@ -7,7 +7,7 @@
     dest: "{{base_repo}}/{{base_project}}"
     update: yes
 
-- name: Copy dispelk Repo to apache2
+- name: Copy dispelk9.github.io Repo to apache2
   copy:
     src: "{{base_repo}}/{{base_project}}"
     dest: "{{base_apache}}"
@@ -18,6 +18,11 @@
   template:
     src: "templates/dispelk9.conf.j2"
     dest: "/etc/apache2/sites-available/{{project_config}}"
+    mode: 0660
+- name: Copy htaccess into the websites folder
+  template:
+    src: "templates/.htaccess.j2"
+    dest: "{{base_apache}}/{{base_project}}"
     mode: 0660
 - name: Activating VirtualHost file
   shell: cd /etc/apache2/sites-available/ | a2ensite {{project_config}}

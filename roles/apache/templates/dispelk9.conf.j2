@@ -6,5 +6,12 @@
 
         ErrorLog ${APACHE_LOG_DIR}/error.log
         CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        <Directory {{base_apache}}/{{base_project}}>
+                Options Indexes FollowSymLinks MultiViews
+                AllowOverride All
+                Order allow,deny
+                allow from all
+        </Directory>
 </VirtualHost>
 
