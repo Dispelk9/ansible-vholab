@@ -1,0 +1,7 @@
+base_project: "dispelk9.github.io"
+base_repo: "/home/vho"
+base_apache: "/var/www"
+project_config: "dispelk9.conf"
+ServerName: "dispelk9.example.com"
+ServerAdmin: "dispelk9@gmail.com"
+DocumentRoot: "{{project_config}}/{{base_project}}"

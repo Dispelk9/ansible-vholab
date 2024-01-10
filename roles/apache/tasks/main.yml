@@ -1,7 +1,21 @@
-#installing apache2
-#sudo apt update
-#sudo apt install apache2
-#sudo mkdir /var/www/gci
-#https://ubuntu.com/tutorials/install-and-configure-apache#4-setting-up-the-virtualhost-configuration-file
 - name: install apache2
   apt: name=apache2 update_cache=yes state=latest
+
+- name: Copy dispelk Repo to apache2
+  copy:
+    src: "{{base_repo}}/{{base_project}}"
+    dest: "{{base_apache}}"
+    force: no
+    remote_src: yes 
+    mode: 0660
+- name: Copy apache config from template
+  template:
+    src: "templates/dispelk9.conf"
+    dest: "/etc/apache2/sites-available/{{project_config}}"
+    force: no
+    remote_src: yes 
+    mode: 0660
+- name: ensure apache is running
+  service:
+    name: httpd
+    state: restarted
