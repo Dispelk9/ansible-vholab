@@ -1,5 +1,5 @@
 base_project: "dispelk9.github.io"
-base_repo: "/home/vho"
+base_repo: "~"
 base_apache: "/var/www"
 project_config: "dispelk9.conf"
 ServerName: "dispelk9.example.com"
