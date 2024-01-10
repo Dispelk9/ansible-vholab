@@ -1,0 +1,5 @@
+#installing apache2
+#sudo apt update
+#sudo apt install apache2
+#sudo mkdir /var/www/gci
+#https://ubuntu.com/tutorials/install-and-configure-apache#4-setting-up-the-virtualhost-configuration-file
