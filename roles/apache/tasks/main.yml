@@ -1,6 +1,12 @@
 - name: Install apache2
   apt: name=apache2 update_cache=yes state=latest
 
+- name: Ensure repo exists
+  git:
+    repo: "git@github.com:Dispelk9/dispelk9.github.io.git"
+    dest: "{{base_repo}}/{{base_project}}"
+    update: yes
+
 - name: Copy dispelk Repo to apache2
   copy:
     src: "{{base_repo}}/{{base_project}}"
