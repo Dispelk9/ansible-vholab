@@ -1,8 +1,8 @@
 <VirtualHost *:80>
-        ServerName dispelk9.example.com
+        ServerName {{ServerName}}
 
-        ServerAdmin dispelk9@gmail.com
-        DocumentRoot /var/www/dispelk9.github.io
+        ServerAdmin {{ServerAdmin}}
+        DocumentRoot {{DocumentRoot}}
 
         ErrorLog ${APACHE_LOG_DIR}/error.log
         CustomLog ${APACHE_LOG_DIR}/access.log combined

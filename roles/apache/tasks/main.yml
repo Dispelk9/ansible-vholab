@@ -1,4 +1,4 @@
-- name: install apache2
+- name: Install apache2
   apt: name=apache2 update_cache=yes state=latest
 
 - name: Copy dispelk Repo to apache2
@@ -10,12 +10,12 @@
     mode: 0660
 - name: Copy apache config from template
   template:
-    src: "templates/dispelk9.conf"
+    src: "templates/dispelk9.conf.j2"
     dest: "/etc/apache2/sites-available/{{project_config}}"
-    force: no
-    remote_src: yes 
     mode: 0660
-- name: ensure apache is running
+- name: Activating VirtualHost file
+  shell: sudo a2ensite /etc/apache2/sites-available/{{project_config}}
+- name: Ensure apache is running
   service:
-    name: httpd
-    state: restarted
+    name: apache2
+    state: reloaded
