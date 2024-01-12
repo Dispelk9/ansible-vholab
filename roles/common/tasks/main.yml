@@ -18,3 +18,8 @@
   apt:
     package:
     - cloud-image-utils
+    - fail2ban
+    - git
+    - ansible
+    - openssl-server
+    - openssl-client
