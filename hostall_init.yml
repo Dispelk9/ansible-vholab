@@ -1,7 +1,6 @@
 ---
 - name: Configure all hosts
   hosts: hostall
-  role:
-  - common
-- import_playbook: lab1_initial.yml
-- import_playbook: lab2_initial.yml
+  roles:
+  - labcommon
+

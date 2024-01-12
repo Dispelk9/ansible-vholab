@@ -1,0 +1,25 @@
+- name: Update APT Cache
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+  become: true
+  become_user: root
+ 
+- name: Remove apt lock file
+  become: true
+  become_user: root
+  file:
+    state: absent
+    path: "/var/lib/dpkg/lock"
+
+- name: Install packages
+  become: true
+  become_user: root
+  apt:
+    package:
+    - cloud-image-utils
+    - fail2ban
+    - git
+    - ansible
+    - openssh-server
+    - openssh-client
