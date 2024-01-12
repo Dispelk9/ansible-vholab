@@ -1,6 +1,6 @@
 ---
 - name: Configure basics kvms
-  hosts: all
+  hosts: lab1
   roles:
   - common
 - name: Configure vhodocker
