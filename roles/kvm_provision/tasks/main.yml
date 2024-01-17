@@ -45,10 +45,10 @@
           state: directory
       - name: Create qcow2 with {{ qcow2_size }}
         command: |
-          qemu-img create -b /tmp/{{ base_image_name }} -F qcow2 -f qcow2 /tmp/{{ vm_name }}.qcow2 {{qcow2_size}}
+          qemu-img create -b ~/{{ base_image_name }} -F qcow2 -f qcow2 /tmp/{{ vm_name }}.qcow2 {{qcow2_size}}
       - name: Copy qcow2 image to libvirt directory
         copy:
-          src: "/tmp/{{ vm_name }}.qcow2"
+          src: "~/{{ vm_name }}.qcow2"
           dest: "{{ base_image_folder }}/{{ vm_name }}.qcow2"
           force: no
           remote_src: yes 
