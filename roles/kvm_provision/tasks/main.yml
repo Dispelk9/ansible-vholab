@@ -113,4 +113,4 @@
   with_items:
     - /tmp/login.img
     - /tmp/login.txt
-    - /tmp/{{ vm_name }}.qcow2
+    - /var/lib/libvirt/images//{{ vm_name }}.qcow2
