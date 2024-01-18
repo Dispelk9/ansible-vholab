@@ -3,4 +3,5 @@
   hosts: hostall
   roles:
   - labcommon
+  become: true
 

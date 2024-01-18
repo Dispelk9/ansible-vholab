@@ -29,38 +29,56 @@
     - bridge-utils 
 - name: Copy setup bridge template
   template:
-    src: templates/br0.netdev.j2
+    src: "templates/br0.netdev.j2"
     dest: "{{networkfolder}}/br0.netdev"
-    force: no
-    remote_src: yes 
+    force: no 
     mode: 0660
 - name: Copy setup bound bridge template
   template:
-    src: templates/1-vhobr2-bind.network.j2
+    src: "templates/1-vhobr2-bind.network.j2"
     dest: "{{networkfolder}}/1-vhobr2-bind.network"
     force: no
-    remote_src: yes 
     mode: 0660
 - name: Copy setup dhcp for bridge template
   template:
-    src: templates/2-vhobr2-dhcp.network.j2
+    src: "templates/2-vhobr2-dhcp.network.j2"
     dest: "{{networkfolder}}/2-vhobr2-dhcp.network"
-    force: no
-    remote_src: yes 
+    force: no 
     mode: 0660
 
 - name: Copy template for new virtual network 
   template:
-    src: templates/vhobr2-network.xml.j2
+    src: "templates/vhobr2-network.xml.j2"
     dest: "{{rootfolder}}/vhobr2-network.xml"
     force: no
-    remote_src: yes 
     mode: 0660
-- name: Enable new network for kvms
-  command: |
-    virsh net-define vhobr2-network.xml
-    virsh net-start {{virt_network}}
-    virsh net-autostart {{virt-network}}
+# - name: Destroy old network
+#   become: true
+#   become_user: root
+#   command: |
+#     virsh net-destroy vhobr2-network 
+# - name: Undefine old network
+#   become: true
+#   become_user: root
+#   command: |
+#     virsh net-undefine vhobr2-network
+# - name: Enable new network for kvms
+#   become: true
+#   become_user: root
+#   command: |
+#     virsh net-define /tmp/vhobr2-network.xml
+
+# - name: Start new network for kvms
+#   become: true
+#   become_user: root
+#   command: |
+#     virsh start /tmp/vhobr2-network
+
+# - name: Auto start new network for kvms
+#   become: true
+#   become_user: root
+#   command: |
+#     virsh autostart /tmp/vhobr2-network
 
 - name: Enable systemd-networkd
   command: |
