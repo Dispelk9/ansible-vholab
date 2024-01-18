@@ -61,15 +61,11 @@
     virsh net-define vhobr2-network.xml
     virsh net-start {{virt_network}}
     virsh net-autostart {{virt-network}}
-    
+
 - name: Enable systemd-networkd
   command: |
     systemctl enable systemd-networkd
 
 - name: Start systemd-networkd
   command: |
-    systemctl enable systemd-networkd
-
-- name: Enable systemd-networkd
-  command: |
-    systemctl enable systemd-networkd
+    systemctl start systemd-networkd
