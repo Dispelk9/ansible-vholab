@@ -1,0 +1,8 @@
+<network>
+    <name>{{virt_network}}</name>
+    <forward mode="bridge" />
+    <bridge name="{{network_brd}}" />
+    <dhcp>
+      <range start="192.168.122.100" end="192.168.122.254"/>
+    </dhcp>
+</network>

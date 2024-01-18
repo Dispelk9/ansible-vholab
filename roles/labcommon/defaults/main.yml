@@ -1,0 +1,5 @@
+network_brd: vhobr2
+virt_network: vhobr2-network 
+pinterface: enx000ec6df7791
+networkfolder: "/etc/systemd/network"
+rootfolder: "~"

@@ -83,6 +83,7 @@
           --boot hd,menu=on \
           --disk path={{ base_image_folder }}/{{ vm_name }}.qcow2,device=disk \
           --disk path={{ base_image_folder }}/login.img,format=raw \
+          --network network={{virt_network}} \
           --graphics none \
           --os-variant {{ os_variant }}
       # - name: Define vm

@@ -23,3 +23,53 @@
     - ansible
     - openssh-server
     - openssh-client
+    - qemu-kvm
+    - libvirt-daemon-system 
+    - libvirt-clients 
+    - bridge-utils 
+- name: Copy setup bridge template
+  template:
+    src: templates/br0.netdev.j2
+    dest: "{{networkfolder}}/br0.netdev"
+    force: no
+    remote_src: yes 
+    mode: 0660
+- name: Copy setup bound bridge template
+  template:
+    src: templates/1-vhobr2-bind.network.j2
+    dest: "{{networkfolder}}/1-vhobr2-bind.network"
+    force: no
+    remote_src: yes 
+    mode: 0660
+- name: Copy setup dhcp for bridge template
+  template:
+    src: templates/2-vhobr2-dhcp.network.j2
+    dest: "{{networkfolder}}/2-vhobr2-dhcp.network"
+    force: no
+    remote_src: yes 
+    mode: 0660
+
+- name: Copy template for new virtual network 
+  template:
+    src: templates/vhobr2-network.xml.j2
+    dest: "{{rootfolder}}/vhobr2-network.xml"
+    force: no
+    remote_src: yes 
+    mode: 0660
+- name: Enable new network for kvms
+  command: |
+    virsh net-define vhobr2-network.xml
+    virsh net-start {{virt_network}}
+    virsh net-autostart {{virt-network}}
+    
+- name: Enable systemd-networkd
+  command: |
+    systemctl enable systemd-networkd
+
+- name: Start systemd-networkd
+  command: |
+    systemctl enable systemd-networkd
+
+- name: Enable systemd-networkd
+  command: |
+    systemctl enable systemd-networkd
