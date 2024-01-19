@@ -8,3 +8,4 @@ vhoweb      	ansible_ssh_host=192.168.122.28
 
 [lab2]
 vhocloud	ansible_ssh_host=192.168.0.147
+vhoweb		ansible_ssh_host=192.168.0.165
