@@ -35,20 +35,20 @@
     mode: 0660
 - name: Copy setup bound bridge template
   template:
-    src: "templates/1-vhobr2-bind.network.j2"
+    src: "templates/1-vhobr-bind.network.j2"
     dest: "{{networkfolder}}/1-{{network_brd}}-bind.network"
     force: no
     mode: 0660
 - name: Copy setup dhcp for bridge template
   template:
-    src: "templates/2-vhobr2-dhcp.network.j2"
+    src: "templates/2-vhobr-dhcp.network.j2"
     dest: "{{networkfolder}}/2-{{network_brd}}-dhcp.network"
     force: no 
     mode: 0660
 
 - name: Copy template for new virtual network 
   template:
-    src: "templates/vhobr2-network.xml.j2"
+    src: "templates/vhobr-network.xml.j2"
     dest: "{{rootfolder}}/{{virt_network}}.xml"
     force: no
     mode: 0660
