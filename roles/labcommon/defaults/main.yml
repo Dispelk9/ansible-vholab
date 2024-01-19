@@ -1,4 +1,4 @@
-network_brd: vhobr2
-virt_network: vhobr2-network 
+network_brd: vhobr
+virt_network: vhobr-network
 networkfolder: "/etc/systemd/network"
 rootfolder: "/root"

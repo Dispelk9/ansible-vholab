@@ -1,5 +1,5 @@
 [hostall]
-vholab1		ansible_ssh_host=192.168.0.222
+vholab1		    ansible_ssh_host=192.168.0.222
 vholab2     	ansible_ssh_host=192.168.0.221
 
 [lab1]

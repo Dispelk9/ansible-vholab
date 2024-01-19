@@ -1,1 +1,5 @@
 pinterface: enx000ec603134f
+network_brd: vhobr1
+virt_network: vhobr1-network
+networkfolder: "/etc/systemd/network"
+rootfolder: "/root"
