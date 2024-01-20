@@ -8,6 +8,7 @@
     - name: KVM Provision role
       include_role:
         name: kvm_provision
-        vars:
-        - vm_name: vhodefault
-        - virt_network: default
+      vars:
+      - vm_name: vhodefault
+      - virt_network: default
+      - qcow2_size: 4G
