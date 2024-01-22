@@ -1,4 +1,7 @@
 #!/bin/bash
+#in .bashrc add
+#alias playlab="/home/vho/Documents/ansible-pull-docker/playlab"
+#soure .bashrc
 current_dir=$( pwd )
 playbook_dir=/home/vho/Documents/ansible-pull-docker/
 
