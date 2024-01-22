@@ -1,8 +1,0 @@
----
-- name: Configure vhoweb
-  hosts: vhoweb
-  become_user: root
-  become: true
-  roles:
-  - apache
-
