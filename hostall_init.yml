@@ -6,7 +6,9 @@
   become: true
 
 - name: Configure basics kvms on lab1
-  hosts: lab1
+  hosts:
+  - lab1
+  - lab2
   roles:
   - common
   become: true
