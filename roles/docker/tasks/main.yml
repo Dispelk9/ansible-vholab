@@ -38,6 +38,7 @@
   pip:
     name: docker
 
+# not running on ubuntu 20.04
 # - name: Pull default Docker image
 #   community.docker.docker_image:
 #     name: "{{ default_container_image }}"
