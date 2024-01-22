@@ -13,7 +13,7 @@
     dest: "{{base_apache}}"
     force: no
     remote_src: yes 
-    mode: 0660
+    mode: 0755
 - name: Copy apache config from template
   template:
     src: "templates/dispelk9.conf.j2"
