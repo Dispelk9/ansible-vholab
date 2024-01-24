@@ -53,33 +53,6 @@
     dest: "{{rootfolder}}/{{virt_network}}.xml"
     force: no
     mode: 0644
-# - name: Destroy old network
-#   become: true
-#   become_user: root
-#   command: |
-#     virsh net-destroy vhobr2-network 
-# - name: Undefine old network
-#   become: true
-#   become_user: root
-#   command: |
-#     virsh net-undefine vhobr2-network
-# - name: Enable new network for kvms
-#   become: true
-#   become_user: root
-#   command: |
-#     virsh net-define /tmp/vhobr2-network.xml
-
-# - name: Start new network for kvms
-#   become: true
-#   become_user: root
-#   command: |
-#     virsh start /tmp/vhobr2-network
-
-# - name: Auto start new network for kvms
-#   become: true
-#   become_user: root
-#   command: |
-#     virsh autostart /tmp/vhobr2-network
 
 - name: Enable systemd-networkd
   command: |

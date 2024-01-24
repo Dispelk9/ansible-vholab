@@ -41,15 +41,14 @@
 - name: Copy Dockerfile to vhodocker
   template:
     src: templates/Dockerfile.j2
-    dest: /tmp/Dockerfile
+    dest: /root/Dockerfile
     force: no
-    remote_src: yes 
-    mode: 0660
+    mode: 0755
 
 - name: Build the Docker image
-  shell: cd /tmp/ | docker build -t debian-kvm .
+  shell: docker build -t debian-kvm .
   become: true
 
 - name: Run the new debian image
-  shell: docker run -dp 192.168.0.27:3000:3000 vhodebian11
+  shell: docker run -dp 192.168.0.27:3000:3000 debian-kvm
   become: true

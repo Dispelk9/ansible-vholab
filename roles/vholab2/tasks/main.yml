@@ -1,0 +1,6 @@
+---
+- name: Start the VM 
+  community.libvirt.virt:
+    name: "{{item.name_of_vms}}"
+    state: running
+  with_items: "{{vm_names}}"

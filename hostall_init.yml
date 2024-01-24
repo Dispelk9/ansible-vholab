@@ -5,18 +5,32 @@
   - labcommon
   become: true
 
-- name: Configure basics kvms on lab1
+- name: Configure vholab1
+  hosts: lab1
+  roles:
+  - vholab1
+  become: true
+
+- name: Configure vholab2
+  hosts: lab2
+  roles:
+  - vholab2
+  become: true
+
+- name: Configure basics kvms on labs
   hosts:
-  - lab1
-  - lab2
+  - vm_lab1
+  - vm_lab2
   roles:
   - common
   become: true
+
 - name: Configure vhodocker
   hosts: vhodocker
   roles:
   - docker
   become: true
+
 - name: Configure vhoweb
   hosts: vhoweb
   become_user: root
