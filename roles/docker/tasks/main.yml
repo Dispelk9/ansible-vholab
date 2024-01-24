@@ -38,17 +38,18 @@
   pip:
     name: docker
 
-# not running on ubuntu 20.04
-# - name: Pull default Docker image
-#   community.docker.docker_image:
-#     name: "{{ default_container_image }}"
-#     source: pull
+- name: Copy Dockerfile to vhodocker
+  template:
+    src: templates/Dockerfile.j2
+    dest: /tmp/Dockerfile
+    force: no
+    remote_src: yes 
+    mode: 0660
 
-# - name: Create default containers
-#   community.docker.docker_container:
-#     name: "{{ default_container_name }}{{ item }}"
-#     image: "{{ default_container_image }}"
-#     command: "{{ default_container_command }}"
-#     state: present
-#     container_default_behavior: "compatibility"
-#   with_sequence: count={{ container_count }}
+- name: Build the Docker image
+  shell: cd /tmp/ | docker build -t debian-kvm .
+  become: true
+
+- name: Run the new debian image
+  shell: docker run -dp 192.168.0.27:3000:3000 vhodebian11
+  become: true
