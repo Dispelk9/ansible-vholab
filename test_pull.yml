@@ -5,9 +5,4 @@
   tasks:
     - name: create new dir
       file:
-        path: "/tmp/testap/"
-        state: directory
-    - name: copy Dockerfile
-      copy:
-        src:  "docker_sandbox/docker_debian/Dockerfile"
-        dest: "/tmp/testap/"
+        path: "/tmp/test_pull"
