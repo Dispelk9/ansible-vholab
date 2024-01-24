@@ -1,0 +1,16 @@
+# claim-9Zw-mjSdx8nv2goY4sGv
+# http://192.168.0.27:32400/web
+# docker-compose up -d
+version: '2.2'
+services:
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker
+    network_mode: host
+    environment:
+      - TZ=GMT+1
+      - PLEX_CLAIM=”claim-9Zw-mjSdx8nv2goY4sGv”
+    volumes:
+      - /plex/database:/config
+      - /plex/transcode:/transcode
+      - /plex/media:/data

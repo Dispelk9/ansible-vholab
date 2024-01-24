@@ -8,6 +8,7 @@
 - name: Install required system packages
   apt:
     pkg:
+      - docker-compose
       - apt-transport-https
       - ca-certificates
       - curl
