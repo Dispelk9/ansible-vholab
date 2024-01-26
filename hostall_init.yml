@@ -1,10 +1,12 @@
 ---
+#General jobs for all labs
 - name: Configure all hosts
   hosts: hostall
   roles:
   - labcommon
   become: true
 
+#Specific jobs for each labs
 - name: Configure vholab1
   hosts: lab1
   roles:
@@ -17,6 +19,7 @@
   - vholab2
   become: true
 
+#General jobs for all KVMs
 - name: Configure basics kvms on labs
   hosts:
   - vm_lab1
@@ -25,6 +28,7 @@
   - common
   become: true
 
+#Specific jobs for each KVMs
 - name: Configure vhodocker
   hosts: vhodocker
   roles:
@@ -37,4 +41,11 @@
   become: true
   roles:
   - apache
+
+- name: Configure vhocloud
+  hosts: vhocloud
+  become_user: root
+  become: true
+  roles:
+  - pihole
 

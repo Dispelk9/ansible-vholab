@@ -6,7 +6,7 @@
   become_user: root
 
 - name: Upgrade all packages on servers
-  apt: upgrade=dist force_apt_get=yes
+  apt: upgrade=safe force_apt_get=yes
 
 - name: Remove dependencies apt autoremove
   ansible.builtin.apt:

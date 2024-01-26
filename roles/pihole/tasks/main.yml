@@ -1,0 +1,5 @@
+- name: Update Gravity
+  shell: pihole -g
+
+- name: Upgrade Pihole 
+  shell: pihole -up
