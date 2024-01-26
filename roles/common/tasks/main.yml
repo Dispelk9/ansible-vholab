@@ -4,6 +4,18 @@
     force_apt_get: yes
   become: true
   become_user: root
+
+- name: Upgrade all packages on servers
+  apt: upgrade=dist force_apt_get=yes
+
+- name: Remove dependencies apt autoremove
+  ansible.builtin.apt:
+    autoremove: yes
+
+- name: Run "apt-get clean"
+  apt:
+    autoclean: yes
+
  
 - name: Remove apt lock file
   become: true

@@ -41,7 +41,7 @@
 
 - name: Copy Dockerfile to vhodocker
   template:
-    src: templates/Dockerfile.j2
+    src: templates/debian_docker/Dockerfile.j2
     dest: /root/Dockerfile
     force: no
     mode: 0755
