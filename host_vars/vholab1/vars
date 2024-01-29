@@ -3,4 +3,4 @@ network_brd: vhobr1
 virt_network: vhobr1-network
 networkfolder: "/etc/systemd/network"
 rootfolder: "/root"
-lab_static_ip: 192.168.0.230
+lab_static_ip: 192.168.0.20
