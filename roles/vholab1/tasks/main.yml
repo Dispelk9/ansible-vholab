@@ -1,6 +1,11 @@
 ---
-# - name: Start the VM 
-#   community.libvirt.virt:
-#     name: "{{item.name_of_vms}}"
-#     state: running
-#   with_items: "{{vm_names}}"
+- name: Start the VM 
+  community.libvirt.virt:
+    name: "{{item.name_of_vms}}"
+    state: running
+  with_items: "{{vm_names}}"
+- name: Set autostart for a VM
+  community.libvirt.virt:
+    name: "{{item.name_of_vms}}"
+    autostart: true
+  with_items: "{{vm_names}}"

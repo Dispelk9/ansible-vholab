@@ -1,0 +1,6 @@
+---
+- name: Configure vhodocker
+  hosts: vhodocker
+  roles:
+  - docker
+  become: true
