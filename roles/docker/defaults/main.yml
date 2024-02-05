@@ -2,4 +2,4 @@ container_count: 4
 default_container_name: docker
 default_container_image: ubuntu
 default_container_command: sleep 1d
-debian_ip_port: 192.168.0.30:3000:3000
+debian_ip_port: 8080:80

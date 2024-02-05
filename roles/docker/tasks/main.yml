@@ -19,21 +19,21 @@
     state: latest
     update_cache: true
 
-- name: Add Docker GPG apt Key
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+# - name: Add Docker GPG apt Key
+#   apt_key:
+#     url: https://download.docker.com/linux/ubuntu/gpg
+#     state: present
 
-- name: Add Docker Repository
-  apt_repository:
-    repo: deb https://download.docker.com/linux/ubuntu focal stable
-    state: present
+# - name: Add Docker Repository
+#   apt_repository:
+#     repo: deb https://download.docker.com/linux/ubuntu focal stable
+#     state: present
 
-- name: Update apt and install docker-ce
-  apt:
-    name: docker-ce
-    state: latest
-    update_cache: true
+# - name: Update apt and install docker-ce
+#   apt:
+#     name: docker-ce
+#     state: latest
+#     update_cache: true
 
 - name: Install Docker Module for Python
   pip:
@@ -41,15 +41,25 @@
 
 - name: Copy Dockerfile to vhodocker
   template:
-    src: templates/debian_docker/Dockerfile.j2
-    dest: /root/Dockerfile
+    src: templates/dockerfile_templates/Dockerfile.j2
+    dest: /root/PaladiumDocker/Dockerfile
     force: no
     mode: 0755
 
-- name: Build the Docker image
-  shell: docker build -t debian-kvm .
-  become: true
+- name: Pull the remote repo
+  shell: git pull
+  args:
+    chdir: /root/PaladiumDocker/Paladium
 
-- name: Run the new debian image
-  shell: docker run -dp {{ debian_ip_port}} debian-kvm
-  become: true
+- name: Remove all old containers
+  shell: | 
+    docker stop $(docker ps -aq) 
+    docker rm $(docker ps -aq)
+
+- name: Build the Docker image
+  shell: docker build -t paladium_apache .
+  args:
+    chdir: /root/PaladiumDocker/
+
+- name: Run the new apache image
+  shell: docker run -d --name paladium-test -p {{ debian_ip_port}} paladium_apache
