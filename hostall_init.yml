@@ -30,7 +30,8 @@
 
 #Specific jobs for each KVMs
 - name: Configure vhodocker
-  hosts: vhodocker
+  hosts: 
+  - vhodocker
   roles:
   - docker
   become: true
@@ -42,8 +43,8 @@
   roles:
   - apache
 
-- name: Configure vhocloud
-  hosts: vhocloud
+- name: Configure vhopi
+  hosts: vhopi
   become_user: root
   become: true
   roles:

@@ -3,7 +3,7 @@
     name: aptitude
     state: latest
     update_cache: true
-  become_user: root
+
 
 - name: Install required system packages
   apt:
