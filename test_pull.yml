@@ -1,8 +1,0 @@
----
-- name: Testing ansible-pull in new VM/Container
-  hosts:
-  - localhost
-  tasks:
-    - name: create new dir
-      file:
-        path: "/tmp/test_pull"
