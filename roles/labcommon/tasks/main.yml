@@ -62,4 +62,4 @@
 
 - name: Disable NetworkManager-wait-online.service
   command: |
-    sudo systemctl disable NetworkManager-wait-online.service
+    systemctl disable NetworkManager-wait-online.service
