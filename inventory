@@ -13,7 +13,7 @@ vholab2     ansible_ssh_host=192.168.0.12
 
 [vm_lab1]
 vhodocker   ansible_ssh_host=192.168.0.30
-vhodocker2  ansible_ssh_host=192.168.0.31
+vhoflask    ansible_ssh_host=192.168.0.31
 
 [vm_lab2]
 vhoweb		ansible_ssh_host=192.168.0.32
