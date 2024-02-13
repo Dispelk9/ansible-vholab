@@ -29,12 +29,8 @@
   become: true
 
 #Specific jobs for each KVMs
-- name: Configure vhodocker
-  hosts: 
-  - vhodocker
-  roles:
-  - docker
-  become: true
+- import_playbook: vhodocker_init.yml
+- import_playbook: vhoflask_init.yml
 
 - name: Configure vhoweb
   hosts: vhoweb

@@ -1,0 +1,26 @@
+- name: Install packages
+  apt:
+    package:
+    - python3.10-venv
+- name: Reset the remote repo
+  shell: git reset .
+  args:
+    chdir: /root/analytic_flask/Analytical_tools
+- name: Restore the remote repo
+  shell: git restore .
+  args:
+    chdir: /root/analytic_flask/Analytical_tools    
+- name: Pull the remote repo
+  shell: git pull
+  args:
+    chdir: /root/analytic_flask/Analytical_tools
+- name: Change IP in python file to VM IP
+  lineinfile:
+    path: /root/analytic_flask/Analytical_tools/adduct_flask.py
+    regexp: "^(.*)app.run(.*)$"
+    line: "\tapp.run(host=\"192.168.0.31\", port=8080, debug=True)"
+- name: Run the Flask Server
+  shell:  nohup python3 adduct_flask.py > /tmp/flask_log.txt 2>&1 &
+  args:
+    chdir: /root/analytic_flask/Analytical_tools
+    

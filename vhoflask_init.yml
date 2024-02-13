@@ -1,0 +1,6 @@
+---
+- name: Configure vhoflask
+  hosts: vhoflask
+  roles:
+  - flask
+  become: true
