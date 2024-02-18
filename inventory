@@ -2,6 +2,9 @@
 #20-29 virtual bridges
 #30-50 kvms
 
+[local]
+local_machine ansible_connection=local ansible_host=localhost
+
 [hostall]
 vholab1		ansible_ssh_host=192.168.0.11
 vholab2     ansible_ssh_host=192.168.0.12
@@ -18,3 +21,7 @@ vhoflask    ansible_ssh_host=192.168.0.31
 [vm_lab2]
 vhoweb		ansible_ssh_host=192.168.0.32
 vhopi   	ansible_ssh_host=192.168.0.33
+
+
+[Hetzner]
+vhohetzner1 ansible_ssh_host=116.203.211.70

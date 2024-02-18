@@ -1,7 +1,68 @@
+- name: Fix sudoers for git clone
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: '.*SSH_AUTH_SOCK$'
+    line: 'Defaults    env_keep += "SSH_AUTH_SOCK"'
+    validate: '/usr/sbin/visudo -cf %s'
+  delegate_to: localhost
+
+- name: Update APT Cache
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+
+- name: Upgrade all packages on servers
+  apt: upgrade=safe force_apt_get=yes
+
+- name: Remove dependencies apt autoremove
+  ansible.builtin.apt:
+    autoremove: yes
+
+- name: Run "apt-get clean"
+  apt:
+    autoclean: yes
+
+ 
+- name: Remove apt lock file
+  file:
+    state: absent
+    path: "/var/lib/dpkg/lock"
 - name: Install packages
   apt:
     package:
     - python3.10-venv
+    - pip
+
+- name: Ensure .ssh directory exists.
+  file:
+    path: /root/.ssh
+    state: directory
+    mode: 0700
+    owner: root
+    group: root
+
+- name: Ensure GitHub deploy key is present on the server.
+  copy:
+    src: "{{ deploy_private_key }}"
+    dest: "{{remote_pk}}"
+    mode: 0600
+    owner: root
+
+- name: Clone a github repository Analytical_tools
+  git:
+    repo: git@github.com:Dispelk9/Analytical_tools.git
+    dest: /root/analytic_flask/Analytical_tools
+    clone: yes
+    update: yes
+    accept_hostkey: yes
+    key_file: "{{remote_pk}}"
+
+- name: Remove Private key
+  file:
+    path: "{{remote_pk}}"
+    state: absent
+
 - name: Reset the remote repo
   shell: git reset .
   args:
@@ -9,16 +70,22 @@
 - name: Restore the remote repo
   shell: git restore .
   args:
-    chdir: /root/analytic_flask/Analytical_tools    
-- name: Pull the remote repo
-  shell: git pull
+    chdir: /root/analytic_flask/Analytical_tools   
+
+# - name: Create venv
+#   shell: . venv/bin/activate
+#   args:
+#     chdir: /root/analytic_flask/Analytical_tools
+
+- name: install flask
+  shell: python3 -m pip install flask
   args:
     chdir: /root/analytic_flask/Analytical_tools
 - name: Change IP in python file to VM IP
   lineinfile:
     path: /root/analytic_flask/Analytical_tools/adduct_flask.py
     regexp: "^(.*)app.run(.*)$"
-    line: "\tapp.run(host=\"192.168.0.31\", port=8080, debug=True)"
+    line: "\tapp.run(host=\"{{hostip}}\", port=8080, debug=True)"
 - name: Run the Flask Server
   shell:  nohup python3 adduct_flask.py > /tmp/flask_log.txt 2>&1 &
   args:

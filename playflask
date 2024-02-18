@@ -8,4 +8,4 @@ playbook_dir=/home/vho/Documents/ansible-pull-docker/
 cd "$playbook_dir"
 #git pull
 
-ansible-playbook /home/vho/Documents/ansible-pull-docker/vhoflask_init.yml
+ansible-playbook -v /home/vho/Documents/ansible-pull-docker/vhoflask_init.yml

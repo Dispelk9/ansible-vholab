@@ -1,0 +1,8 @@
+- name: Fix sudoers for git clone
+  when: is_linux
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: '.*SSH_AUTH_SOCK$'
+    line: 'Defaults    env_keep += "SSH_AUTH_SOCK"'
+    validate: '/usr/sbin/visudo -cf %s'

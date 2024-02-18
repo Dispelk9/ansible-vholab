@@ -1,0 +1,2 @@
+deploy_private_key: "/root/.ssh/github_terra"
+remote_pk: "/root/.ssh/github_terra"
