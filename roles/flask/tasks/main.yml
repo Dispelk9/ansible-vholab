@@ -1,3 +1,14 @@
+## after running install certbot
+#apt install snapd
+#sudo snap install --classic certbot
+#sudo ln -s /snap/bin/certbot /usr/bin/certbot
+#sudo certbot --apache
+# install ssl package using pip 
+# pip install pyopenssl --upgrade
+# go to folder with adduct_flask.py run
+# nohup python3 adduct_flask.py > /tmp/flask_log.txt 2>&1 &
+# can see debug in /tmp/flask_log.txt
+
 - name: Fix sudoers for git clone
   lineinfile:
     path: /etc/sudoers
@@ -28,11 +39,13 @@
   file:
     state: absent
     path: "/var/lib/dpkg/lock"
+
 - name: Install packages
   apt:
     package:
     - python3.10-venv
     - pip
+    - apache2
 
 - name: Ensure .ssh directory exists.
   file:

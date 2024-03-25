@@ -1,7 +1,7 @@
 ---
 - name: Configure vhoflask
   hosts: 
-   - vhohetzner1
+   - vhohetzner2
   roles:
   - flask
   become: true
