@@ -45,7 +45,6 @@
     package:
     - python3.10-venv
     - pip
-    - apache2
 
 - name: Ensure .ssh directory exists.
   file:
@@ -103,4 +102,3 @@
   shell:  nohup python3 adduct_flask.py > /tmp/flask_log.txt 2>&1 &
   args:
     chdir: /root/analytic_flask/Analytical_tools
-    
