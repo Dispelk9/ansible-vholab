@@ -45,6 +45,7 @@
     package:
     - python3.10-venv
     - pip
+    - apache2
 
 - name: Ensure .ssh directory exists.
   file:
@@ -89,16 +90,21 @@
 #   args:
 #     chdir: /root/analytic_flask/Analytical_tools
 
-- name: install flask
-  shell: python3 -m pip install flask
-  args:
-    chdir: /root/analytic_flask/Analytical_tools
+# - name: install flask
+#   shell: python3 -m pip install flask
+#   args:
+#     chdir: /root/analytic_flask/Analytical_tools
 # - name: Change IP in python file to VM IP
 #   lineinfile:
 #     path: /root/analytic_flask/Analytical_tools/adduct_flask.py
 #     regexp: "^(.*)app.run(.*)$"
 #     line: "\tapp.run(host=\"{{hostip}}\", port=8080, debug=True)"
-- name: Run the Flask Server
-  shell:  nohup python3 adduct_flask.py > /tmp/flask_log.txt 2>&1 &
+# - name: Run the Flask Server
+#   shell:  nohup python3 adduct_flask.py > /tmp/flask_log.txt 2>&1 &
+#   args:
+#     chdir: /root/analytic_flask/Analytical_tools
+- name: Run the Gunicorn Server
+  shell:
+    gunicorn --config gunicorn_config.py adduct_flask:app --certfile=/etc/letsencrypt/live/analytical.dispelk9.de/fullchain.pem --keyfile=/etc/letsencrypt/live/analytical.dispelk9.de/privkey.pem > /tmp/flask_log.txt 2>&1 &
   args:
     chdir: /root/analytic_flask/Analytical_tools

@@ -7,12 +7,12 @@ local_machine ansible_connection=local ansible_host=localhost
 
 [hostall]
 vholab1		ansible_ssh_host=192.168.0.11
-vholab2     ansible_ssh_host=192.168.0.12
+vholab2    	 ansible_ssh_host=192.168.0.12
 
 [lab1]
 vholab1		ansible_ssh_host=192.168.0.11
 [lab2]
-vholab2     ansible_ssh_host=192.168.0.12
+vholab2     	ansible_ssh_host=192.168.0.12
 
 [vm_lab1]
 vhodocker   ansible_ssh_host=192.168.0.30
@@ -24,5 +24,5 @@ vhopi   	ansible_ssh_host=192.168.0.33
 
 
 [Hetzner]
-vhohetzner1 ansible_ssh_host=49.13.151.55
+vhohetzner1 ansible_ssh_host=188.245.69.219
 vhohetzner2 ansible_ssh_host=195.201.27.165
