@@ -1,0 +1,29 @@
+---
+- name: Unpack BDDS tarball into images dir
+  unarchive:
+    src:   "{{ bdds_tar }}"
+    dest:  "{{ images_dir }}"
+    remote_src: yes
+    creates:    "{{ images_dir }}/bdds_kvm_9.6.0-576.GA.bcn_amd64.qcow2"
+  become: yes
+
+#- name: Deploy BDDS XML template
+#  template:
+#    src:  "{{ bdds_xml_template }}"
+#    dest: "{{ bdds_xml_dest }}"
+#  become: yes
+
+- name: Define the BDDS domain
+  community.libvirt.virt:
+    name: adonis
+    command: define
+    xml:  "{{ lookup('template', 'bdds-9.6.0-template.xml.j2') }}"
+    autostart: true
+  become: yes
+
+- name: Start the BDDS domain
+  community.libvirt.virt:
+    name: adonis
+    state: running
+  become: yes
+

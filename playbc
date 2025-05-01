@@ -1,0 +1,11 @@
+#!/bin/bash
+#in .bashrc add
+#alias playbc="/root/ansible-vholab/playbc"
+#source .bashrc
+current_dir=$( pwd )
+playbook_dir=/root/ansible-vholab
+
+cd "$playbook_dir"
+#git pull
+
+ansible-playbook /root/ansible-vholab/bluecat_deploy.yml

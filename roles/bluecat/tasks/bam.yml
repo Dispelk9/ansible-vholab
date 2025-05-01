@@ -1,0 +1,32 @@
+---
+#- name: Show bam_tar variable
+#  debug:
+#    var: bam_tar
+- name: Unpack BAM tarball into images dir
+  unarchive:
+    src:   "{{ bam_tar }}"
+    dest:  "{{ images_dir }}"
+    remote_src: yes
+    creates:    "{{ images_dir }}/bam_kvm_9.6.0-576.GA.bcn_amd64.qcow2"
+  become: yes
+
+#- name: Deploy BAM XML template
+#  template:
+#    src:  "{{ bam_xml_template }}"
+#    dest: "{{ bam_xml_dest }}"
+#  become: yes
+
+- name: Define the BAM domain
+  community.libvirt.virt:
+    name: proteus
+    command: define
+    xml:  "{{ lookup('template', 'bam-9.6.0-template.xml.j2') }}"
+    autostart: true
+  become: yes
+
+- name: Start the BAM domain
+  community.libvirt.virt:
+    name: proteus
+    state: running
+  become: yes
+

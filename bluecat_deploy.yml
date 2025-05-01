@@ -1,0 +1,14 @@
+---
+- name: Deploys Bluecat Lab
+  hosts: localhost
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: BAM and BDDS Provision role
+      include_role:
+        name: bluecat
+      #vars:
+      #- vm_name: vhodefault
+      #- virt_network: default
+      #- qcow2_size: 4G
