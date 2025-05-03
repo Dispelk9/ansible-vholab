@@ -20,13 +20,13 @@
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2'/>
-      <source file='/var/lib/libvirt/images/bdds_kvm_9.6.0-576.GA.bcn_amd64.qcow2'/>
+      <source file='{{ images_dir }}/{{bdds_qcow}}'/>
       <target dev='vda' bus='virtio'/>
       <alias name='virtio-disk0'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
     </disk>
     <interface type='network'>
-      <source network='default'/>
+      <source network='{{ bridge_nw }}'/>
       <target dev='vnet0'/>
       <model type='virtio'/>
       <alias name='net0'/>

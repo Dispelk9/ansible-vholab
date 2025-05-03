@@ -1,12 +1,14 @@
 # roles/bluecat/defaults/main.yml
 
+base_dir: /root/bluecat_dir
 images_dir: /var/lib/libvirt/images
+bridge_nw: vhobr1-network
 
 bam_tar:             /root/9.6.0/bam_kvm_9.6.0-576.GA.bcn_amd64.tar.tar
 bam_xml_template:    lookup('template', 'bam-9.6.0-template.xml.j2')
-bam_xml_dest:        /etc/libvirt/qemu/bam9.6.xml
+bam_qcow: bam_kvm_9.6.0-576.GA.bcn_amd64.qcow2 
+
 
 bdds_tar:            /root/9.6.0/bdds_kvm_9.6.0-576.GA.bcn_amd64.tar.tar
 bdds_xml_template:   lookup('template', 'bdds-9.6.0-template.xml.j2')
-bdds_xml_dest:       /etc/libvirt/qemu/bdds9.6.xml
-
+bdds_qcow: bdds_kvm_9.6.0-576.GA.bcn_amd64.qcow2

@@ -2,16 +2,16 @@
 - name: Unpack BDDS tarball into images dir
   unarchive:
     src:   "{{ bdds_tar }}"
-    dest:  "{{ images_dir }}"
+    dest:  "{{ base_dir }}"
     remote_src: yes
-    creates:    "{{ images_dir }}/bdds_kvm_9.6.0-576.GA.bcn_amd64.qcow2"
+    creates:    "{{ base_dir }}/{{bdds_qcow}}"
   become: yes
 
-#- name: Deploy BDDS XML template
-#  template:
-#    src:  "{{ bdds_xml_template }}"
-#    dest: "{{ bdds_xml_dest }}"
-#  become: yes
+- name: Copy image to libvirt
+  ansible.builtin.copy:
+    src: "{{ base_dir }}/{{bdds_qcow}}"
+    dest: "{{ images_dir }}/{{bdds_qcow}}"
+    force: yes
 
 - name: Define the BDDS domain
   community.libvirt.virt:
