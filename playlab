@@ -1,11 +1,11 @@
 #!/bin/bash
 #in .bashrc add
 #alias playlab="/home/vho/Documents/ansible-pull-docker/playlab"
-#soure .bashrc
+#source .bashrc
 current_dir=$( pwd )
-playbook_dir=/home/vho/Documents/ansible-pull-docker/
+playbook_dir=/home/vho/vho-database/ansible-vholab/
 
 cd "$playbook_dir"
 #git pull
 
-ansible-playbook /home/vho/Documents/ansible-pull-docker/hostall_init.yml
+sudo ansible-playbook /home/vho/vho-database/ansible-vholab/hostall_init.yml

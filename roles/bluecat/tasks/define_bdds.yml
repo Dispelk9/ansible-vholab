@@ -1,0 +1,11 @@
+- name: Set BDDS name for this instance
+  set_fact:
+    bdds_name: "bdds{{ item }}"
+
+- name: Define the BDDS domain
+  community.libvirt.virt:
+    name: "{{ bdds_name }}"
+    command: define
+    xml: "{{ lookup('template', 'bdds-9.6.0-template.xml.j2') }}"
+    autostart: true
+  become: yes

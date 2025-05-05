@@ -1,29 +1,63 @@
----
+# ---
+# - name: Unpack BDDS tarball into images dir
+#   unarchive:
+#     src:   "{{ bdds_tar }}"
+#     dest:  "{{ base_dir }}"
+#     remote_src: yes
+#     creates:    "{{ base_dir }}/{{bdds_qcow}}"
+#   become: yes
+
+# - name: Copy image to libvirt
+#   ansible.builtin.copy:
+#     src: "{{ base_dir }}/{{bdds_qcow}}"
+#     dest: "{{ images_dir }}/{{bdds_qcow}}"
+#     force: yes
+
+# - name: Define the BDDS domain
+#   community.libvirt.virt:
+#     name: adonis
+#     command: define
+#     xml:  "{{ lookup('template', 'bdds-9.6.0-template.xml.j2') }}"
+#     autostart: true
+#   become: yes
+
+# - name: Start the BDDS domain
+#   community.libvirt.virt:
+#     name: adonis
+#     state: running
+#   become: yes
+
+
 - name: Unpack BDDS tarball into images dir
   unarchive:
-    src:   "{{ bdds_tar }}"
-    dest:  "{{ base_dir }}"
+    src: "{{ bdds_tar }}"
+    dest: "{{ base_dir }}"
     remote_src: yes
-    creates:    "{{ base_dir }}/{{bdds_qcow}}"
+    creates: "{{ base_dir }}/{{ bdds_qcow }}"
   become: yes
 
-- name: Copy image to libvirt
+# Loop over BDDS instances and create a unique QCOW2 for each instance
+- name: Create unique QCOW2 image for each BDDS instance
   ansible.builtin.copy:
-    src: "{{ base_dir }}/{{bdds_qcow}}"
-    dest: "{{ images_dir }}/{{bdds_qcow}}"
+    src: "{{ base_dir }}/{{ bdds_qcow }}"
+    dest: "{{ images_dir }}/bdds{{ item }}.qcow2"
     force: yes
-
-- name: Define the BDDS domain
-  community.libvirt.virt:
-    name: adonis
-    command: define
-    xml:  "{{ lookup('template', 'bdds-9.6.0-template.xml.j2') }}"
-    autostart: true
   become: yes
+  loop: "{{ range(1, number_of_bdds + 1) | list }}"
+  loop_control:
+    loop_var: item
 
-- name: Start the BDDS domain
+- name: Define all BDDS instances
+  include_tasks: define_bdds.yml
+  loop: "{{ range(1, number_of_bdds + 1) | list }}"
+  loop_control:
+    loop_var: item
+
+- name: Start the BDDS domains
   community.libvirt.virt:
-    name: adonis
+    name: "bdds{{ item }}"
     state: running
   become: yes
-
+  loop: "{{ range(1, number_of_bdds + 1) | list }}"
+  loop_control:
+    loop_var: item

@@ -1,14 +1,28 @@
+# ---
+# - name: Deploys Bluecat Lab
+#   hosts: localhost
+#   gather_facts: yes
+#   become: yes
+
+#   tasks:
+#     - name: BAM and BDDS Provision role
+#       include_role:
+#         name: bluecat
+
 ---
-- name: Deploys Bluecat Lab
+- name: Deploy Bluecat Lab
   hosts: localhost
   gather_facts: yes
   become: yes
 
+  vars:
+    # Number of BDDS instances you want to deploy
+    number_of_bdds: 3  # Adjust this value as needed
+    create_bdds: true   # Set to false if you want to skip BDDS deployment
+
   tasks:
-    - name: BAM and BDDS Provision role
+    - name: Deploy BAM
       include_role:
         name: bluecat
-      #vars:
-      #- vm_name: vhodefault
-      #- virt_network: default
-      #- qcow2_size: 4G
+      when: create_bdds  # Ensure BAM is created before BDDS if needed
+
