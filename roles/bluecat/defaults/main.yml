@@ -12,3 +12,6 @@ bam_qcow: bam_kvm_9.6.0-576.GA.bcn_amd64.qcow2
 bdds_tar:            /root/9.6.0/bdds_kvm_9.6.0-576.GA.bcn_amd64.tar.tar
 bdds_xml_template:   lookup('template', 'bdds-9.6.0-template.xml.j2')
 bdds_qcow: bdds_kvm_9.6.0-576.GA.bcn_amd64.qcow2
+
+src_net: "192.168.1.0/24"
+dst_net: "192.168.122.0/24"

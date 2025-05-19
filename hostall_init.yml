@@ -1,7 +1,9 @@
 ---
 #General jobs for all labs
 - name: Configure all hosts
-  hosts: local
+  hosts: 
+  - local
+  - hostall
   roles:
   - labcommon
   become: true

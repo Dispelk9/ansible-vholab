@@ -34,7 +34,7 @@
     dest: "{{ base_dir }}"
     remote_src: yes
     creates: "{{ base_dir }}/{{ bdds_qcow }}"
-  become: yes
+  become: true
 
 # Loop over BDDS instances and create a unique QCOW2 for each instance
 - name: Create unique QCOW2 image for each BDDS instance
@@ -42,7 +42,8 @@
     src: "{{ base_dir }}/{{ bdds_qcow }}"
     dest: "{{ images_dir }}/bdds{{ item }}.qcow2"
     force: yes
-  become: yes
+    remote_src: yes
+  become: true
   loop: "{{ range(1, number_of_bdds + 1) | list }}"
   loop_control:
     loop_var: item
@@ -57,7 +58,7 @@
   community.libvirt.virt:
     name: "bdds{{ item }}"
     state: running
-  become: yes
+  become: true
   loop: "{{ range(1, number_of_bdds + 1) | list }}"
   loop_control:
     loop_var: item

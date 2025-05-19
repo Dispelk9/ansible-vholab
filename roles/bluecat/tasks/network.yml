@@ -1,0 +1,11 @@
+---
+#ip tables forward
+- name: Ensure forwarding from src to dst is allowed
+  ansible.builtin.iptables:
+    table: filter
+    chain: FORWARD
+    rule_num: 1
+    source: "{{ src_net }}"
+    destination: "{{ dst_net }}"
+    jump: ACCEPT
+    state: present

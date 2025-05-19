@@ -8,13 +8,14 @@
     dest:  "{{ base_dir }}"
     remote_src: yes
     creates:    "{{ base_dir }}/{{bam_qcow}}"
-  become: yes
+  become: true
 
 - name: Copy image to libvirt
   ansible.builtin.copy:
     src: "{{ base_dir }}/{{bam_qcow}}"
     dest: "{{ images_dir }}/{{bam_qcow}}"
     force: yes
+    remote_src: yes
 
 - name: Define the BAM domain
   community.libvirt.virt:
@@ -22,11 +23,11 @@
     command: define
     xml:  "{{ lookup('template', 'bam-9.6.0-template.xml.j2') }}"
     autostart: true
-  become: yes
+  become: true
 
 - name: Start the BAM domain
   community.libvirt.virt:
     name: proteus
     state: running
-  become: yes
+  become: true
 

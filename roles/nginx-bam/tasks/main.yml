@@ -1,0 +1,69 @@
+---
+#Setting docker
+- name: Ensure docker and docker compose are available
+  ansible.builtin.package:
+    name:
+      - docker
+      - docker-compose-plugin
+    state: present
+
+# create dir if it is not there
+- name: Ensure the Nginx directory exists
+  ansible.builtin.file:
+    path: /root/nginx-reverse-bam
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+#get the compose
+- name: Copy nginx conf to the reverse server
+  ansible.builtin.copy:
+    src: "./templates/nginx-bam.conf.j2"
+    dest: "/root/nginx-reverse-bam/nginx-bam.conf"
+    force: yes
+#get the nginx conf
+- name: Copy docker compose to the reverse server
+  ansible.builtin.copy:
+    src: "./templates/nginx-docker-compose.yml.j2"
+    dest: "/root/nginx-reverse-bam/nginx-docker-compose.yml"
+    force: yes
+- name: Remove all old containers if any exist
+  shell: |
+    containers=$(docker ps -aq)
+    if [ -n "$containers" ]; then
+      docker stop $containers
+      docker rm   $containers
+    fi
+  args:
+    warn: false
+
+#run compose
+- name: Start containers from specific compose file
+  shell: |
+    docker compose -f {{ compose_dir }}/{{ compose_file }} up -d
+  args:
+    chdir: "{{ compose_dir }}"
+    warn: false
+
+
+
+#ip route
+- name: Check if the static route exists
+  shell: |
+    ip route show {{ dst_net }} | grep -q '^{{ dst_net }} '
+  register: route_check
+  # rc == 0 → route exists; rc == 1 → not found; rc >1 → error
+  ignore_errors: true
+  changed_when: false
+  args:
+    warn: false
+
+- name: Add static route if missing
+  shell: |
+    ip route add {{ dst_net }} via {{ gateway }} dev {{ iface }}
+  when: route_check.rc == 1
+  register: add_route
+  failed_when: add_route.rc not in [0,2]
+  changed_when: add_route.rc == 0
+  args:
+    warn: false

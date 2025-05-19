@@ -1,0 +1,10 @@
+# roles/bluecat/defaults/main.yml
+
+server_name: 192.168.1.23
+bam_ip: 192.168.122.50
+src_net: "192.168.1.0/24"
+dst_net: "192.168.122.0/24"
+gateway: 192.168.1.13
+iface: enp1s0
+compose_dir: /root/nginx-reverse-bam
+compose_file: nginx-docker-compose.yml
