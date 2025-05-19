@@ -1,5 +1,8 @@
 ---
 #Setting docker
+- name: debug vars
+  debug: var=bam_ip
+
 - name: Ensure docker and docker compose are available
   ansible.builtin.package:
     name:
@@ -16,14 +19,14 @@
     owner: root
     group: root
 #get the compose
-- name: Copy nginx conf to the reverse server
-  ansible.builtin.copy:
+- name: Template nginx conf to the reverse server
+  template:
     src: "./templates/nginx-bam.conf.j2"
     dest: "/root/nginx-reverse-bam/nginx-bam.conf"
     force: yes
 #get the nginx conf
-- name: Copy docker compose to the reverse server
-  ansible.builtin.copy:
+- name: Template docker compose to the reverse server
+  template:
     src: "./templates/nginx-docker-compose.yml.j2"
     dest: "/root/nginx-reverse-bam/nginx-docker-compose.yml"
     force: yes

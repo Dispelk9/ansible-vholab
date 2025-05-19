@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name 192.168.1.23;
+    server_name {{server_name}};
 
     location ^~ /app {
         proxy_pass         http://{{bam_ip}}:80;
