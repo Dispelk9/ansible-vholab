@@ -2,7 +2,7 @@ services:
   nginx-proxy:
     image: nginxproxy/nginx-proxy
     container_name: nginx-proxy
-      #network_mode: host
+    #network_mode: host
     ports:
       - "80:80"  # Expose port 9000 to 80 inside the container
       - "443:443"  # If you want SSL, expose 443 as well
@@ -11,8 +11,7 @@ services:
       - VIRTUAL_HOST={{server_name}}   # The external IP you want to use
       - VIRTUAL_PORT=80               # The port on the target VM (192.168.122.50) to forward traffic to
     volumes:
-      #- ./nginx.conf:/etc/nginx/nginx.conf
-      - ./bc-nginx.conf:/etc/nginx/conf.d/bc-nginx.conf
+      - ./nginx-bam.conf:/etc/nginx/conf.d/bc-nginx-bam.conf
       - certs:/etc/nginx/certs
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro

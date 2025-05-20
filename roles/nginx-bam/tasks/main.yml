@@ -18,18 +18,22 @@
     mode: '0755'
     owner: root
     group: root
-#get the compose
+# get the nginx conf 
+# caution, docker will generate a default.conf to /etc/nginx/conf.d/ so the file in template has to have character begin with something more than "d"
+# otherwise it will be rewrite first and then goes to default.conf
 - name: Template nginx conf to the reverse server
   template:
     src: "./templates/nginx-bam.conf.j2"
     dest: "/root/nginx-reverse-bam/nginx-bam.conf"
     force: yes
-#get the nginx conf
+
+#get the compose
 - name: Template docker compose to the reverse server
   template:
     src: "./templates/nginx-docker-compose.yml.j2"
     dest: "/root/nginx-reverse-bam/nginx-docker-compose.yml"
     force: yes
+
 - name: Remove all old containers if any exist
   shell: |
     containers=$(docker ps -aq)
