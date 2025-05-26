@@ -6,9 +6,9 @@
 
   vars:
     # Number of BDDS instances you want to deploy
-    number_of_bdds: 1  # Adjust this value as needed
+    number_of_bdds: 3  # Adjust this value as needed
     create_bdds: true   # Set to false if you want to skip BDDS deployment
-    bridge_nw:  default #default #vhobr1-network 
+    bridge_nw:  default  #default #vhobr1-network 
   tasks:
     - debug:
         msg: "bridge_nw is {{ bridge_nw }}"
@@ -25,7 +25,7 @@
   gather_facts: yes
   become: yes
   vars:
-    bridge_nw: default  
+    bridge_nw: default 
   roles:
     - role: nginx-bam
       when: bridge_nw == "default"
