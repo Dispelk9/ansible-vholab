@@ -22,44 +22,44 @@
     - libvirt-daemon-system 
     - libvirt-clients 
     - bridge-utils 
-#- name: Copy setup bridge template
-#  template:
-#    src: "templates/br0.netdev.j2"
-#    dest: "{{networkfolder}}/br0.netdev"
-#    force: no 
-#    mode: 0644
-#- name: Copy setup bound bridge template
-#  template:
-#    src: "templates/1-vhobr-bind.network.j2"
-#    dest: "{{networkfolder}}/1-{{network_brd}}-bind.network"
-#    force: no
-#    mode: 0644
-#- name: Copy setup dhcp for bridge template
-#  template:
-#    src: "templates/2-vhobr-dhcp.network.j2"
-#    dest: "{{networkfolder}}/2-{{network_brd}}-dhcp.network"
-#    force: no 
-#    mode: 0644
-#
-#- name: Copy template for new virtual network 
-#  template:
-#    src: "templates/vhobr-network.xml.j2"
-#    dest: "{{rootfolder}}/{{virt_network}}.xml"
-#    force: no
-#    mode: 0644
-#
-#- name: Enable systemd-networkd
-#  command: |
-#    systemctl enable systemd-networkd
-#
-#- name: Start systemd-networkd
-#  command: |
-#    systemctl start systemd-networkd
-#
-#- name: Restart systemd-timesyncd
-#  command: |
-#    systemctl restart systemd-timesyncd.service
-#
-#- name: Disable NetworkManager-wait-online.service
-#  command: |
-#    systemctl disable NetworkManager-wait-online.service
+- name: Copy setup bridge template
+  template:
+    src: "templates/br0.netdev.j2"
+    dest: "{{networkfolder}}/br0.netdev"
+    force: no 
+    mode: 0644
+- name: Copy setup bound bridge template
+  template:
+    src: "templates/1-vhobr-bind.network.j2"
+    dest: "{{networkfolder}}/1-{{network_brd}}-bind.network"
+    force: no
+    mode: 0644
+- name: Copy setup dhcp for bridge template
+  template:
+    src: "templates/2-vhobr-dhcp.network.j2"
+    dest: "{{networkfolder}}/2-{{network_brd}}-dhcp.network"
+    force: no 
+    mode: 0644
+
+- name: Copy template for new virtual network 
+  template:
+    src: "templates/vhobr-network.xml.j2"
+    dest: "{{rootfolder}}/{{virt_network}}.xml"
+    force: no
+    mode: 0644
+
+- name: Enable systemd-networkd
+  command: |
+    systemctl enable systemd-networkd
+
+- name: Start systemd-networkd
+  command: |
+    systemctl start systemd-networkd
+
+- name: Restart systemd-timesyncd
+  command: |
+    systemctl restart systemd-timesyncd.service
+
+- name: Disable NetworkManager-wait-online.service
+  command: |
+    systemctl disable NetworkManager-wait-online.service

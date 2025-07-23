@@ -1,0 +1,6 @@
+pinterface: enx000ec6df7791
+network_brd: vhobr3
+virt_network: vhobr3-network
+networkfolder: "/etc/systemd/network"
+rootfolder: "/root"
+lab_static_ip: 192.168.1.26

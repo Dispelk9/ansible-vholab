@@ -2,7 +2,6 @@
 #General jobs for all labs
 - name: Configure all hosts
   hosts: 
-  - local
   - hostall
   roles:
   - labcommon
