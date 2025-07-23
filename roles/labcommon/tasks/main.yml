@@ -48,6 +48,21 @@
     force: no
     mode: 0644
 
+- name: Define the virtual network in libvirt
+  command: >
+    virsh net-define {{ rootfolder }}/{{ virt_network }}.xml
+  args:
+    creates: "/etc/libvirt/qemu/networks/{{ virt_network }}.xml"
+
+- name: Set the virtual network to autostart
+  command: >
+    virsh net-autostart {{ virt_network }}
+
+- name: Start the virtual network
+  command: >
+    virsh net-start {{ virt_network }}
+
+
 - name: Enable systemd-networkd
   command: |
     systemctl enable systemd-networkd

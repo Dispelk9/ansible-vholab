@@ -15,6 +15,9 @@ vholab1    ansible_ssh_host=192.168.1.13
 [lab2]
 vholab2    ansible_ssh_host=192.168.0.12
 
+[lab3]
+vholab3    ansible_ssh_host=192.168.1.26
+
 [vmlab1]
 react-lab  ansible_ssh_host=192.168.1.23
 
