@@ -1,31 +1,31 @@
 ---
 - name: Deploy Bluecat Lab
-  hosts: lab1
+  hosts: lab3
   gather_facts: yes
   become: yes
 
   vars:
     # Number of BDDS instances you want to deploy
     number_of_bdds: 3  # Adjust this value as needed
-    create_bdds: true   # Set to false if you want to skip BDDS deployment
-    bridge_nw:  default  #default #vhobr1-network 
+    create_bdds: false   # Set to false if you want to skip BDDS deployment
+    bridge_nw:  vhobr3-network  #default #vhobr1-network #vhobr3-network 
   tasks:
     - debug:
         msg: "bridge_nw is {{ bridge_nw }}"
     - name: Deploy BAM
       include_role:
         name: bluecat
-      when: create_bdds  # Ensure BAM is created before BDDS if needed
+      #when: create_bdds  # Ensure BAM is created before BDDS if needed
 
 
 # When connecting to bridge_nw: default and need nginx proxy on another server to route to BAM in default network
 
-- name: Setup Networking Bluecat Lab
-  hosts: vmlab1
-  gather_facts: yes
-  become: yes
-  vars:
-    bridge_nw: default 
-  roles:
-    - role: nginx-bam
-      when: bridge_nw == "default"
+# - name: Setup Networking Bluecat Lab
+#   hosts: vmlab1
+#   gather_facts: yes
+#   become: yes
+#   vars:
+#     bridge_nw: default 
+#   roles:
+#     - role: nginx-bam
+#       when: bridge_nw == "default"

@@ -1,5 +1,5 @@
 ---
 - include: bam.yml
-- include: bdds.yml
-- include: network.yml
-  when: bridge_nw == 'default'
+# - include: bdds.yml
+# - include: network.yml
+#  when: bridge_nw == 'default'

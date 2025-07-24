@@ -2,6 +2,14 @@
 #- name: Show bam_tar variable
 #  debug:
 #    var: bam_tar
+- name: Ensure "{{ base_dir }}" exists
+  ansible.builtin.file:
+    path: "{{ base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Unpack BAM tarball into images dir
   unarchive:
     src:   "{{ bam_tar }}"
@@ -19,15 +27,15 @@
 
 - name: Define the BAM domain
   community.libvirt.virt:
-    name: proteus
+    name: "{{bam_name}}"
     command: define
-    xml:  "{{ lookup('template', 'bam-9.6.0-template.xml.j2') }}"
+    xml:  "{{ lookup('template', bam_xml_template) }}"
     autostart: true
   become: true
 
 - name: Start the BAM domain
   community.libvirt.virt:
-    name: proteus
+    name: "{{bam_name}}"
     state: running
   become: true
 
