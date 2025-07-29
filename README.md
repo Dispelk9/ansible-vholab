@@ -1,5 +1,5 @@
 # ansible-vholab<br />
-# testing ansible pull inside a debian/ubuntu<br />
+# Welcome to vho Lab Ansible configuration<br />
 apt-get update<br />
 apt get -install -y ansible git<br />
 
