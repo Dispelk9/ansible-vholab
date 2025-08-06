@@ -4,7 +4,7 @@
 # os_variant: ubuntu22.04
 
 # defaults file for kvm_provision debian
-base_image_name: "debian-12-genericcloud-amd64.img"
+base_image_name: "debian-12-genericcloud-amd64.qcow2"
 base_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/{{ base_image_name }}"
 os_variant: debian12
 

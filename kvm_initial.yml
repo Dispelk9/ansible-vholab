@@ -11,4 +11,5 @@
       vars:
        vm_name: otrs-k
        virt_network: vhobr3-network
-       qcow2_size: 20G
+       qcow2_size: 4G
+       target_distro: debian

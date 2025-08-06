@@ -1,9 +1,8 @@
 <domain type='kvm'>
   <name>{{ vm_name }}</name>
-  <uuid>32b298ca-76fb-450b-b149-b4db33adb763</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
-      <libosinfo:os id="http://ubuntu.com/ubuntu/18.04"/>
+      <libosinfo:os id="{{ osinfo_id }}"/>
     </libosinfo:libosinfo>
   </metadata>
   <memory unit='KiB'>{{ vm_ram_mb }}</memory>
@@ -38,7 +37,7 @@
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2'/>
-      <source file='{{ libvirt_pool_dir }}/{{ vm_name }}.qcow2' index='2'/>
+      <source file='{{ base_image_folder }}/{{ vm_name }}.qcow2' index='2'/>
       <backingStore/>
       <target dev='vda' bus='virtio'/>
       <alias name='virtio-disk0'/>
@@ -46,7 +45,7 @@
     </disk>
     <disk type='file' device='disk'>
       <driver name='qemu' type='raw'/>
-      <source file='{{ libvirt_pool_dir }}/login.img' index='1'/>
+      <source file='{{ base_image_folder }}/login.img' index='1'/>
       <backingStore/>
       <target dev='vdb' bus='virtio'/>
       <alias name='virtio-disk1'/>
@@ -152,7 +151,6 @@
       <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
     </controller>
     <interface type='network'>
-      <mac address='52:54:00:68:bc:e0'/>
       <source network='{{ vm_net }}' portid='75c7815e-185c-4edb-82e3-fe6ec925dff6' bridge='virbr0'/>
       <target dev='vnet6'/>
       <model type='virtio'/>
@@ -172,7 +170,7 @@
       <alias name='serial0'/>
     </console>
     <channel type='unix'>
-      <source mode='bind' path='/var/lib/libvirt/qemu/channel/target/domain-7-vho_ubuntu_kvm/org.qemu.guest_agent.0'/>
+      <source mode='bind' path='/var/lib/libvirt/qemu/channel/target/domain-{{ vm_name }}/org.qemu.guest_agent.0'/>
       <target type='virtio' name='org.qemu.guest_agent.0' state='disconnected'/>
       <alias name='channel0'/>
       <address type='virtio-serial' controller='0' bus='0' port='1'/>
