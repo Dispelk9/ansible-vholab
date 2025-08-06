@@ -1,4 +1,12 @@
 ---
+- name: Set distro-specific image vars
+  set_fact:
+    base_image_name: "{{ 'jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'debian-12-genericcloud-amd64.qcow2' }}"
+    base_image_url: "{{ 'https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2' }}"
+    os_variant: "{{ 'ubuntu22.04' if target_distro == 'ubuntu' else 'debian12' }}"
+    osinfo_id: "{{ 'http://ubuntu.com/ubuntu/22.04' if target_distro == 'ubuntu' else 'http://debian.org/debian/12' }}"
+
+
 # tasks file for kvm_provision
 - name: Ensure requirements in place
   package:
@@ -51,14 +59,6 @@
         file:
           path: "{{ base_image_folder }}"
           state: directory
-
-      - name: Set distro-specific image vars
-        set_fact:
-          base_image_name: "{{ 'jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'debian-12-genericcloud-amd64.qcow2' }}"
-          base_image_url: "{{ 'https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2' }}"
-          os_variant: "{{ 'ubuntu22.04' if target_distro == 'ubuntu' else 'debian12' }}"
-          osinfo_id: "{{ 'http://ubuntu.com/ubuntu/22.04' if target_distro == 'ubuntu' else 'http://debian.org/debian/12' }}"
-
 
       - name: Create qcow2 image 
         command: >
