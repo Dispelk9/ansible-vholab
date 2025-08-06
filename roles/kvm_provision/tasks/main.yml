@@ -26,6 +26,7 @@
   apt:
     package:
     - cloud-image-utils
+    update_cache: yes
 
 - name: Get VMs list
   community.libvirt.virt:

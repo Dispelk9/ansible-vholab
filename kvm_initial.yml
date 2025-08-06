@@ -9,6 +9,6 @@
       include_role:
         name: kvm_provision
       vars:
-       vm_name: dash
-       virt_network: vhobr1-network
+       vm_name: otrs-k
+       virt_network: vhobr3-network
        qcow2_size: 20G
