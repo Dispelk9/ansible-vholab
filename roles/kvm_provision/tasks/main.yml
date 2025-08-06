@@ -51,21 +51,16 @@
         file:
           path: "{{ base_image_folder }}"
           state: directory
-      # - name: Create qcow2 with {{ qcow2_size }}
-      #   command: |
-      #     qemu-img create -b /var/lib/libvirt/images/{{ base_image_name }} -F qcow2 -f qcow2 /var/lib/libvirt/images/{{ vm_name }}.qcow2 {{qcow2_size}}
-      - name: Set osinfo_id based on distro
-        set_fact:
-          osinfo_id: >-
-            {% if target_distro == 'ubuntu' %}
-              http://ubuntu.com/ubuntu/22.04
-            {% elif target_distro == 'debian' %}
-              http://debian.org/debian/12
-            {% else %}
-              http://example.com/unknown
-            {% endif %}
 
-      - name: Create qcow2 image (Ubuntu)
+      - name: Set distro-specific image vars
+        set_fact:
+          base_image_name: "{{ 'jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'debian-12-genericcloud-amd64.qcow2' }}"
+          base_image_url: "{{ 'https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2' }}"
+          os_variant: "{{ 'ubuntu22.04' if target_distro == 'ubuntu' else 'debian12' }}"
+          osinfo_id: "{{ 'http://ubuntu.com/ubuntu/22.04' if target_distro == 'ubuntu' else 'http://debian.org/debian/12' }}"
+
+
+      - name: Create qcow2 image 
         command: >
           qemu-img create -b /var/lib/libvirt/images/{{ base_image_name }} -F qcow2 -f qcow2 /var/lib/libvirt/images/{{ vm_name }}.qcow2 {{ qcow2_size }}
         when: target_distro == 'ubuntu'

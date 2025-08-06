@@ -1,12 +1,10 @@
-# defaults file for kvm_provision ubuntu
-# base_image_name: "jammy-server-cloudimg-amd64.img"
-# base_image_url: "https://cloud-images.ubuntu.com/jammy/current/{{ base_image_name }}"
-# os_variant: ubuntu22.04
+# defaults file for kvm_provision
+target_distro: debian        # Can be overridden at runtime
 
-# defaults file for kvm_provision debian
-base_image_name: "debian-12-genericcloud-amd64.qcow2"
-base_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/{{ base_image_name }}"
-os_variant: debian12
+# Placeholder defaults (actual values set via set_fact)
+base_image_name: ""
+base_image_url: ""
+os_variant: ""
 
 base_image_folder: "/var/lib/libvirt/images/kvmfile/{{ vm_name }}"
 vm_name: vhocloud
