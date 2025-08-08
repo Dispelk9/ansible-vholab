@@ -5,9 +5,9 @@
   become: yes
 
   tasks:
-    - name: KVM Provision role
+    - name: KVM Provision role qcow2
       include_role:
-        name: kvm_provision
+        name: kvm_provision_qcow2
       vars:
        vm_name: otrs-k
        virt_network: vhobr3-network

@@ -3,11 +3,9 @@
 apt-get update<br />
 apt get -install -y ansible git<br />
 
-to pull a new Ubuntu KVM using ansible-pull<br />
-ansible-pull -U https://github.com/Dispelk9/ansible-pull-docker.git kvm_initial.yml -v<br />
-
+target_distro can be debian or ubuntu<br />
 with adjustment of vm name virt_network and size of qcow<br />
-ansible-pull -U https://github.com/Dispelk9/ansible-pull-docker.git kvm_initial.yml -e "vm_name=otrs-k virt_network=vhobr3-network qcow2_size=4G target_distro=debian" -v<br />
+ansible-pull -U https://github.com/Dispelk9/ansible-pull-docker.git kvm_initial_qcow2.yml -e "vm_name=otrs-k virt_network=vhobr3-network qcow2_size=4G target_distro=debian" -v<br />
 
 
 playdocker<br />

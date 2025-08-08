@@ -1,0 +1,138 @@
+---
+- name: Set distro-specific image vars
+  set_fact:
+    base_image_name: "{{ 'jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'debian-12-genericcloud-amd64.qcow2' }}"
+    base_image_url: "{{ 'https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img' if target_distro == 'ubuntu' else 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2' }}"
+    os_variant: "{{ 'ubuntu22.04' if target_distro == 'ubuntu' else 'debian12' }}"
+    osinfo_id: "{{ 'http://ubuntu.com/ubuntu/22.04' if target_distro == 'ubuntu' else 'http://debian.org/debian/12' }}"
+
+
+# tasks file for kvm_provision
+- name: Ensure requirements in place
+  package:
+    name:
+      - python3-pip
+      - python3-lxml
+      - python3-libvirt
+      - ansible
+      - git
+      - qemu
+      - qemu-kvm
+      - libvirt-clients
+      - libvirt-daemon-system
+      - virtinst
+      - bridge-utils
+    state: present
+  become: true
+
+# - name: Install Jinja2
+#   shell: pip3 install "Jinja2<3.1"
+- name: Install community.libvirt
+  shell: ansible-galaxy collection install community.libvirt
+
+- name: Install packages
+  apt:
+    package:
+    - cloud-image-utils
+    update_cache: yes
+
+- name: Get VMs list
+  community.libvirt.virt:
+    command: list_vms
+  register: existing_vms
+  changed_when: no
+
+- name: Create VM if not exists
+  block:
+      - name: Download base image
+        get_url:
+          url: "{{ base_image_url }}"
+          dest: "/tmp/{{ base_image_name }}"
+      - name: Copy the base image to libvirt
+        copy:
+          src: "/tmp/{{ base_image_name }}"
+          dest: "/var/lib/libvirt/images/{{ base_image_name }}"
+          force: no
+          remote_src: yes
+          mode: 0660
+      - name: Create directory for {{ vm_name }}
+        file:
+          path: "{{ base_image_folder }}"
+          state: directory
+
+      - name: Create qcow2 image 
+        command: >
+          qemu-img create -b /var/lib/libvirt/images/{{ base_image_name }} -F qcow2 -f qcow2 /var/lib/libvirt/images/{{ vm_name }}.qcow2 {{ qcow2_size }}
+        when: target_distro == 'ubuntu'
+
+      - name: Convert and resize base image (Debian)
+        block:
+          - name: Convert base image
+            command: >
+              qemu-img convert -f qcow2 -O qcow2 /var/lib/libvirt/images/{{ base_image_name }} /var/lib/libvirt/images/{{ vm_name }}.qcow2
+          - name: Resize Debian image
+            command: qemu-img resize /var/lib/libvirt/images/{{ vm_name }}.qcow2 {{ qcow2_size }}
+        when: target_distro == 'debian'
+
+      - name: Copy qcow2 image to libvirt directory
+        copy:
+          src: "/var/lib/libvirt/images/{{ vm_name }}.qcow2"
+          dest: "{{ base_image_folder }}/{{ vm_name }}.qcow2"
+          force: no
+          remote_src: yes 
+          mode: 0660
+      - name: Copy login info to tmp directory
+        template:
+          src: templates/login.txt
+          dest: /tmp/login.txt
+          force: no
+          remote_src: yes 
+          mode: 0660
+      - name: Converting login info to disk image
+        shell: cloud-localds /tmp/login.img /tmp/login.txt
+      - name: Copy login.img info from tmp directory
+        copy:
+          src: /tmp/login.img
+          dest: "{{ base_image_folder }}/login.img"
+          force: no
+          remote_src: yes 
+          mode: 0660
+      - name: Configure the image
+        command: |
+          virt-install --name {{ vm_name }} \
+          --virt-type kvm --memory {{ vm_ram_mb }}  --vcpus {{ vm_vcpus }} \
+          --boot hd,menu=on \
+          --disk path={{ base_image_folder }}/{{ vm_name }}.qcow2,device=disk \
+          --disk path={{ base_image_folder }}/login.img,format=raw \
+          --network network={{virt_network}} \
+          --graphics none \
+          --os-variant {{ os_variant }}
+      # - name: Define vm
+      #   community.libvirt.virt:
+      #     command: define
+      #     xml: "{{ lookup('template', 'vm-template.xml.j2') }}"
+  when: "vm_name not in existing_vms.list_vms"
+
+- name: Ensure VM is started
+  community.libvirt.virt:
+    name: "{{ vm_name }}"
+    state: running
+  register: vm_start_results
+  until: "vm_start_results is success"
+  retries: 15
+  delay: 2
+
+- name: Ensure temporary file is deleted
+  file:
+    path: /tmp/{{ base_image_name }}
+    state: absent
+  when: cleanup_tmp | bool
+
+- name: Ensure temporary login is deleted
+  file:
+    path: "{{item}}"
+    state: absent
+  with_items:
+    - /tmp/login.img
+    - /tmp/login.txt
+    - /var/lib/libvirt/images//{{ vm_name }}.qcow2

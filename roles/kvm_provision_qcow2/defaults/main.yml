@@ -1,0 +1,18 @@
+# defaults file for kvm_provision
+target_distro: debian        # Can be overridden at runtime
+
+# Placeholder defaults (actual values set via set_fact)
+base_image_name: ""
+base_image_url: ""
+os_variant: ""
+
+base_image_folder: "/var/lib/libvirt/images/kvmfile/{{ vm_name }}"
+vm_name: vhocloud
+vm_vcpus: 2
+vm_ram_mb: 2048
+vm_net: default
+cleanup_tmp: no
+ssh_key: /root/.ssh/id_rsa.pub
+qcow2_size: 4G
+
+
