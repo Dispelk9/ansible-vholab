@@ -1,0 +1,25 @@
+---
+- name: Deploys VM based on cloud image
+  hosts: localhost
+  gather_facts: yes
+  become: yes
+
+  vars:
+    provision_method: qcow2   # or "lvm"
+    vm_name: otrs-k
+    virt_network: vhobr3-network
+    target_distro: debian
+    qcow2_size: 20G
+    lvm_disk_size: 20G
+    lvm_vg_name: vgubuntu
+
+  tasks:
+    - name: Include role for qcow2 provisioning
+      include_role:
+        name: kvm_provision_qcow2
+      when: provision_method == "qcow2"
+
+    - name: Include role for lvm provisioning
+      include_role:
+        name: kvm_provision_lvm
+      when: provision_method == "lvm"

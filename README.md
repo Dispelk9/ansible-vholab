@@ -4,8 +4,13 @@ apt-get update<br />
 apt get -install -y ansible git<br />
 
 target_distro can be debian or ubuntu<br />
-with adjustment of vm name virt_network and size of qcow<br />
-ansible-pull -U https://github.com/Dispelk9/ansible-pull-docker.git kvm_initial_qcow2.yml -e "vm_name=otrs-k virt_network=vhobr3-network qcow2_size=4G target_distro=debian" -v<br />
+with adjustment of vm name virt_network and size of qcow or lvm<br />
+
+# For qcow2
+ansible-pull -U https://github.com/Dispelk9/ansible-pull-docker.git kvm_initial.yml -e "provision_method=qcow2 vm_name= virt_network=vhobr3-network qcow2_size=10G target_distro=debian" -v
+
+# For LVM
+ansible-pull -U https://github.com/Dispelk9/ansible-pull-docker.git kvm_initial.yml -e "provision_method=lvm vm_name= virt_network=vhobr3-network lvm_disk_size=10G lvm_vg_name=vgubuntu target_distro=debian" -v
 
 
 playdocker<br />

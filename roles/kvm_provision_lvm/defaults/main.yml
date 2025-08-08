@@ -1,18 +1,22 @@
 # defaults file for kvm_provision
+
+# OS and cloud image details
 target_distro: debian        # Can be overridden at runtime
+base_image_name: ""          # Will be set dynamically
+base_image_url: ""           # Will be set dynamically
+os_variant: ""               # Will be set dynamically
 
-# Placeholder defaults (actual values set via set_fact)
-base_image_name: ""
-base_image_url: ""
-os_variant: ""
-
-base_image_folder: "/var/lib/libvirt/images/kvmfile/{{ vm_name }}"
-vm_name: vhocloud
+# VM configuration
+vm_name: lvm_vhocloud
 vm_vcpus: 2
 vm_ram_mb: 2048
-vm_net: default
-cleanup_tmp: no
+virt_network: default        # Renamed from vm_net for consistency with virt-install
 ssh_key: /root/.ssh/id_rsa.pub
-qcow2_size: 4G
 
+# Disk & storage
+base_image_folder: "/var/lib/libvirt/images/kvmfile/{{ vm_name }}"
+lvm_disk_size: 10G           # Size of the LVM volume to allocate
+lvm_vg_name: vgubuntu        # Default VG to create the LV in
 
+# Cleanup flags
+cleanup_tmp: no
