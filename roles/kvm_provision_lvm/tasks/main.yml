@@ -38,7 +38,7 @@
   register: existing_vms
   changed_when: no
 
-- name: Create VM with multi-volume LVM-backed disks
+- name: Create VM with LVM-backed disk
   block:
 
     - name: Download base image
@@ -51,38 +51,14 @@
         path: "{{ base_image_folder }}"
         state: directory
 
-    # Define LV schema
-    - name: Set VM disk layout
-      set_fact:
-        vm_lvm_schema:
-          - { name: "{{ vm_name }}-boot", size: "{{ lvm_boot_size | default('768M') }}" }
-          - { name: "{{ vm_name }}-root", size: "{{ lvm_root_size | default('10G') }}" }
-          - { name: "{{ vm_name }}-srv",  size: "{{ lvm_srv_size  | default('20G') }}" }
-          - { name: "{{ vm_name }}-swap", size: "{{ lvm_swap_size | default('2G') }}" }
-
-    - name: Create logical volumes for VM
-      loop: "{{ vm_lvm_schema }}"
-      loop_control:
-        label: "{{ item.name }}"
-      command: lvcreate -L {{ item.size }} -n {{ item.name }} {{ lvm_vg_name | default('vgubuntu') }}
-      become: true
-
-
-    - name: Format data volumes as XFS
-      loop:
-        - boot
-        - srv
-      command: mkfs.xfs /dev/{{ lvm_vg_name }}/{{ vm_name }}-{{ item }}
-      become: true
-
-    - name: Format swap volume
-      command: mkswap /dev/{{ lvm_vg_name }}/{{ vm_name }}-swap
-      become: true
-
-    # Convert cloud image into root volume
-    - name: Convert cloud image to raw and write to root LV
+    - name: Create LVM logical volume for VM
       command: >
-        qemu-img convert -O raw /tmp/{{ base_image_name }} /dev/{{ lvm_vg_name }}/{{ vm_name }}-root
+        lvcreate -L {{ lvm_disk_size }} -n lv_{{ vm_name }} vgubuntu
+      become: true
+
+    - name: Convert base image to raw and write to LV
+      command: >
+        qemu-img convert -O raw /tmp/{{ base_image_name }} /dev/vgubuntu/lv_{{ vm_name }}
       become: true
 
     - name: Copy cloud-init user-data template to /tmp
@@ -102,15 +78,12 @@
         remote_src: yes
         mode: 0660
 
-    - name: Configure and create the VM with multiple disks
-      command: >
+    - name: Configure and create the VM
+      command: |
         virt-install --name {{ vm_name }} \
         --virt-type kvm --memory {{ vm_ram_mb }} --vcpus {{ vm_vcpus }} \
         --boot hd,menu=on \
-        --disk path=/dev/{{ lvm_vg_name }}/{{ vm_name }}-boot,format=raw,device=disk \
-        --disk path=/dev/{{ lvm_vg_name }}/{{ vm_name }}-root,format=raw,device=disk \
-        --disk path=/dev/{{ lvm_vg_name }}/{{ vm_name }}-srv,format=raw,device=disk \
-        --disk path=/dev/{{ lvm_vg_name }}/{{ vm_name }}-swap,format=raw,device=disk \
+        --disk path=/dev/vgubuntu/lv_{{ vm_name }},format=raw,device=disk \
         --disk path={{ base_image_folder }}/login.img,format=raw \
         --network network={{ virt_network }} \
         --graphics none \
@@ -118,7 +91,6 @@
       become: true
 
   when: "vm_name not in existing_vms.list_vms"
-
 
 - name: Ensure VM is started
   community.libvirt.virt:
