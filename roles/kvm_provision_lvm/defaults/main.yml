@@ -6,17 +6,15 @@ base_image_name: ""          # Will be set dynamically
 base_image_url: ""           # Will be set dynamically
 os_variant: ""               # Will be set dynamically
 
-# VM configuration
-vm_name: lvm_vhocloud
+vm_name: lvm_default
 vm_vcpus: 2
 vm_ram_mb: 2048
-virt_network: default        # Renamed from vm_net for consistency with virt-install
-ssh_key: /root/.ssh/id_rsa.pub
+virt_network: default
+base_image_folder: /var/lib/libvirt/images/kvmfile/{{ vm_name }}
 
-# Disk & storage
-base_image_folder: "/var/lib/libvirt/images/kvmfile/{{ vm_name }}"
-lvm_disk_size: 10G           # Size of the LVM volume to allocate
-lvm_vg_name: vgubuntu        # Default VG to create the LV in
+lvm_vg_name: vgubuntu
+lvm_boot_size: 768M
+lvm_root_size: 10G
+lvm_srv_size: 20G
+lvm_swap_size: 2G
 
-# Cleanup flags
-cleanup_tmp: no
