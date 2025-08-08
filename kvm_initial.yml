@@ -6,8 +6,8 @@
 
   vars:
     provision_method: qcow2   # or "lvm"
-    vm_name: otrs-k
-    virt_network: vhobr3-network
+    vm_name: kvm_default
+    virt_network: default
     target_distro: debian
     qcow2_size: 20G
     lvm_disk_size: 20G
