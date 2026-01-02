@@ -58,10 +58,20 @@
   command: >
     virsh net-autostart {{ virt_network }}
 
-- name: Start the virtual network
-  command: >
-    virsh net-start {{ virt_network }}
+- name: Get libvirt network state
+  command: virsh net-info {{ virt_network }}
+  register: net_info
+  changed_when: false
 
+- name: Extract Active state
+  set_fact:
+    net_active: "{{ (net_info.stdout | regex_search('(?m)^Active:\\s+(yes|no)\\s*$', '\\1')) | lower }}"
+
+- name: Start the virtual network if inactive
+  command: virsh net-start {{ virt_network }}
+  when: net_active == 'no'
+- debug:
+    var: net_active
 
 - name: Enable systemd-networkd
   command: |
