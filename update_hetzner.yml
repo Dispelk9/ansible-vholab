@@ -1,0 +1,8 @@
+---
+#General jobs for all labs
+- name: Configure update all hosts Hetzner
+  hosts:
+  - Hetzner
+  roles:
+  - common
+  become: true

@@ -1,0 +1,5 @@
+---
+- hosts: vhodockers
+  become: true
+  roles:
+    - netbox

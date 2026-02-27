@@ -1,0 +1,9 @@
+netbox_fqdn: "netbox.dispelk9.de"
+netbox_enable_certbot: true
+netbox_certbot_cloudflare_creds: "/root/.secrets/cloudflare.ini"
+
+# If you want full automation (optional)
+netbox_create_superuser: true
+netbox_superuser_name: "admin"
+netbox_superuser_email: "admin@dispelk9.de"
+netbox_superuser_password: "ChangeMe123!"

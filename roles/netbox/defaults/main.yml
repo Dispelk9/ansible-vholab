@@ -1,0 +1,30 @@
+---
+# Where to install netbox-docker
+netbox_install_dir: /opt/netbox
+netbox_repo: "https://github.com/netbox-community/netbox-docker.git"
+netbox_repo_branch: "release"
+
+# How NetBox is exposed locally (for nginx upstream)
+netbox_bind_ip: "127.0.0.1"
+netbox_bind_port: 8083
+
+# Public hostname
+netbox_fqdn: "netbox.dispelk9.de"
+
+# Nginx site filenames
+netbox_nginx_site_available: "/etc/nginx/sites-available/nginx-netbox.conf"
+netbox_nginx_site_enabled: "/etc/nginx/sites-enabled/nginx-netbox.conf"
+
+# LetsEncrypt paths (certbot will create these)
+netbox_ssl_fullchain: "/etc/letsencrypt/live/{{ netbox_fqdn }}/fullchain.pem"
+netbox_ssl_privkey: "/etc/letsencrypt/live/{{ netbox_fqdn }}/privkey.pem"
+
+# Certbot DNS Cloudflare
+netbox_enable_certbot: true
+netbox_certbot_cloudflare_creds: "/root/.secrets/cloudflare.ini"
+netbox_certbot_propagation_seconds: 60
+netbox_certbot_key_type: "ecdsa"
+
+# Secrets handling
+# Set to true to generate secrets on the target and save them in env files.
+netbox_generate_secrets: true

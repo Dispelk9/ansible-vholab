@@ -1,0 +1,231 @@
+---
+- name: Ensure netbox base directory exists
+  ansible.builtin.file:
+    path: "{{ netbox_install_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Clone netbox-docker repo
+  ansible.builtin.git:
+    repo: "{{ netbox_repo }}"
+    dest: "{{ netbox_install_dir }}/netbox-docker"
+    version: "{{ netbox_repo_branch }}"
+    update: yes
+
+- name: Write docker-compose.override.yml (bind NetBox locally)
+  ansible.builtin.copy:
+    dest: "{{ netbox_install_dir }}/netbox-docker/docker-compose.override.yml"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      services:
+        netbox:
+          ports:
+            - "{{ netbox_bind_ip }}:{{ netbox_bind_port }}:8080"
+          healthcheck:
+            interval: 10s
+            timeout: 10s
+            retries: 30
+            start_period: 60s
+        netbox-worker:
+          healthcheck:
+            interval: 10s
+            timeout: 10s
+            retries: 30
+            start_period: 60s
+
+# --- Secrets / env files ---
+- name: Generate secrets (only if enabled)
+  when: netbox_generate_secrets
+  block:
+    - name: Generate DB password if missing
+      ansible.builtin.command: "openssl rand -base64 24"
+      register: _dbpass
+      changed_when: false
+
+    - name: Generate redis password if missing
+      ansible.builtin.command: "openssl rand -base64 24"
+      register: _redis1
+      changed_when: false
+
+    - name: Generate redis-cache password if missing
+      ansible.builtin.command: "openssl rand -base64 24"
+      register: _redis2
+      changed_when: false
+
+    - name: Generate NetBox SECRET_KEY
+      ansible.builtin.command: "openssl rand -base64 48"
+      register: _secret
+      changed_when: false
+
+    - name: Generate API_TOKEN_PEPPER_1
+      ansible.builtin.command: "openssl rand -base64 48"
+      register: _pepper
+      changed_when: false
+
+    - name: Read existing env/postgres.env
+      ansible.builtin.slurp:
+        src: "{{ netbox_install_dir }}/netbox-docker/env/postgres.env"
+      register: _postgres_env_raw
+
+    - name: Read existing env/netbox.env
+      ansible.builtin.slurp:
+        src: "{{ netbox_install_dir }}/netbox-docker/env/netbox.env"
+      register: _netbox_env_raw
+
+    - name: Read existing env/redis.env
+      ansible.builtin.slurp:
+        src: "{{ netbox_install_dir }}/netbox-docker/env/redis.env"
+      register: _redis_env_raw
+
+    - name: Read existing env/redis-cache.env
+      ansible.builtin.slurp:
+        src: "{{ netbox_install_dir }}/netbox-docker/env/redis-cache.env"
+      register: _rediscache_env_raw
+
+    # Helper: ensure we DON'T overwrite if already set (so reruns are stable)
+    - name: Decide DBPASS (keep existing if present)
+      ansible.builtin.set_fact:
+        netbox_dbpass: >-
+          {{
+            ((_postgres_env_raw.content | b64decode).splitlines()
+              | select('match','^POSTGRES_PASSWORD=')
+              | list | first | default('POSTGRES_PASSWORD=')
+            ).split('=',1)[1]
+            | default(_dbpass.stdout, true)
+          }}
+
+    - name: Decide REDIS passwords (keep existing if present)
+      ansible.builtin.set_fact:
+        netbox_redispass: >-
+          {{
+            ((_redis_env_raw.content | b64decode).splitlines()
+              | select('match','^REDIS_PASSWORD=')
+              | list | first | default('REDIS_PASSWORD=')
+            ).split('=',1)[1]
+            | default(_redis1.stdout, true)
+          }}
+        netbox_rediscachepass: >-
+          {{
+            ((_rediscache_env_raw.content | b64decode).splitlines()
+              | select('match','^REDIS_PASSWORD=')
+              | list | first | default('REDIS_PASSWORD=')
+            ).split('=',1)[1]
+            | default(_redis2.stdout, true)
+          }}
+
+    - name: Decide SECRET_KEY (keep existing if present)
+      ansible.builtin.set_fact:
+        netbox_secretkey: >-
+          {{
+            ((_netbox_env_raw.content | b64decode).splitlines()
+              | select('match','^SECRET_KEY=')
+              | list | first | default('SECRET_KEY=')
+            ).split('=',1)[1]
+            | default(_secret.stdout, true)
+          }}
+
+    - name: Decide PEPPER (keep existing if present)
+      ansible.builtin.set_fact:
+        netbox_pepper: >-
+          {{
+            ((_netbox_env_raw.content | b64decode).splitlines()
+              | select('match','^API_TOKEN_PEPPER_1=')
+              | list | first | default('API_TOKEN_PEPPER_1=')
+            ).split('=',1)[1]
+            | default(_pepper.stdout, true)
+          }}
+
+    - name: Ensure POSTGRES_PASSWORD set
+      ansible.builtin.lineinfile:
+        path: "{{ netbox_install_dir }}/netbox-docker/env/postgres.env"
+        regexp: '^POSTGRES_PASSWORD='
+        line: "POSTGRES_PASSWORD={{ netbox_dbpass }}"
+
+    - name: Ensure NetBox DB + secrets set
+      ansible.builtin.lineinfile:
+        path: "{{ netbox_install_dir }}/netbox-docker/env/netbox.env"
+        regexp: '^{{ item.key }}='
+        line: "{{ item.key }}={{ item.value }}"
+      loop:
+        - { key: "DB_PASSWORD", value: "{{ netbox_dbpass }}" }
+        - { key: "SECRET_KEY", value: "{{ netbox_secretkey }}" }
+        - { key: "API_TOKEN_PEPPER_1", value: "{{ netbox_pepper }}" }
+        - { key: "REDIS_PASSWORD", value: "{{ netbox_redispass }}" }
+        - { key: "REDIS_CACHE_PASSWORD", value: "{{ netbox_rediscachepass }}" }
+        - { key: "ALLOWED_HOSTS", value: "{{ netbox_fqdn }} localhost 127.0.0.1" }
+
+    - name: Ensure redis passwords set
+      ansible.builtin.lineinfile:
+        path: "{{ item.path }}"
+        regexp: '^REDIS_PASSWORD='
+        line: "REDIS_PASSWORD={{ item.pass }}"
+      loop:
+        - { path: "{{ netbox_install_dir }}/netbox-docker/env/redis.env", pass: "{{ netbox_redispass }}" }
+        - { path: "{{ netbox_install_dir }}/netbox-docker/env/redis-cache.env", pass: "{{ netbox_rediscachepass }}" }
+
+# --- Start NetBox ---
+- name: Pull images
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: "{{ netbox_install_dir }}/netbox-docker"
+
+- name: Start NetBox stack
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ netbox_install_dir }}/netbox-docker"
+
+# --- Optional: certbot DNS (Cloudflare) ---
+- name: Issue LetsEncrypt cert for NetBox (DNS challenge)
+  when: netbox_enable_certbot
+  ansible.builtin.command: >
+    certbot certonly --non-interactive --agree-tos -m {{ netbox_superuser_email | default('admin@localhost') }}
+    --dns-cloudflare
+    --dns-cloudflare-credentials {{ netbox_certbot_cloudflare_creds }}
+    --dns-cloudflare-propagation-seconds {{ netbox_certbot_propagation_seconds }}
+    --cert-name {{ netbox_fqdn }}
+    --key-type {{ netbox_certbot_key_type }}
+    -d {{ netbox_fqdn }}
+  register: _certbot
+  changed_when: "'Congratulations' in _certbot.stdout or 'successfully' in _certbot.stdout"
+  failed_when: _certbot.rc != 0 and ('Certificate not yet due for renewal' not in _certbot.stdout)
+
+# --- Nginx vhost ---
+- name: Deploy nginx site for NetBox
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ netbox_nginx_site_available }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+- name: Enable nginx site
+  ansible.builtin.file:
+    src: "{{ netbox_nginx_site_available }}"
+    dest: "{{ netbox_nginx_site_enabled }}"
+    state: link
+  notify: reload nginx
+
+- name: Validate nginx config
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+# # --- Optional: create a superuser (hands off) ---
+# docker compose exec netbox /opt/netbox/netbox/manage.py createsuperuser
+# - name: Create NetBox superuser (optional)
+#   when: netbox_create_superuser and (netbox_superuser_password | length > 0)
+#   ansible.builtin.command: >
+#     docker compose exec -T netbox /opt/netbox/netbox/manage.py shell -c
+#     "from django.contrib.auth import get_user_model;
+#      User=get_user_model();
+#      u,created=User.objects.get_or_create(username='{{ netbox_superuser_name }}', defaults={'email':'{{ netbox_superuser_email }}'});
+#      u.is_superuser=True; u.is_staff=True;
+#      u.set_password('{{ netbox_superuser_password }}');
+#      u.save();
+#      print('created' if created else 'updated')"
+#   args:
+#     chdir: "{{ netbox_install_dir }}/netbox-docker"
