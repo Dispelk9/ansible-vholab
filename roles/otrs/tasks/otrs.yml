@@ -1,0 +1,160 @@
+- name: Update APT Cache
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+
+- name: Upgrade all packages on servers
+  apt: upgrade=safe force_apt_get=yes
+
+- name: Remove dependencies apt autoremove
+  ansible.builtin.apt:
+    autoremove: yes
+
+- name: Run "apt-get clean"
+  apt:
+    autoclean: yes
+
+ 
+- name: Remove apt lock file
+  file:
+    state: absent
+    path: "/var/lib/dpkg/lock"
+- name: Install required OTRS packages
+  apt:
+    package:
+    - awscli
+    - git
+    - ansible
+    - cpanminus 
+    - libapache2-mod-auth-openidc
+    - libapache2-mod-perl2 
+    - libdbd-mysql-perl 
+    - libtimedate-perl 
+    - libnet-dns-perl 
+    - libnet-ldap-perl 
+    - libio-socket-ssl-perl 
+    - libpdf-api2-perl 
+    - libsoap-lite-perl 
+    - libtext-csv-xs-perl 
+    - libjson-xs-perl 
+    - libapache-dbi-perl 
+    - libxml-libxml-perl 
+    - libxml-libxslt-perl 
+    - libyaml-perl 
+    - libarchive-zip-perl 
+    - libcrypt-eksblowfish-perl 
+    - libencode-hanextra-perl 
+    - libmail-imapclient-perl 
+    - libtemplate-perl 
+    - libdatetime-perl 
+    - libmoo-perl 
+    - bash-completion 
+    - libyaml-libyaml-perl 
+    - libjavascript-minifier-xs-perl 
+    - libcss-minifier-xs-perl 
+    - libauthen-sasl-perl 
+    - libauthen-ntlm-perl 
+    - libhash-merge-perl 
+    - libical-parser-perl 
+    - libspreadsheet-xlsx-perl 
+    - libcrypt-jwt-perl 
+    - libcrypt-openssl-x509-perl 
+    - jq
+    - libdbd-pg-perl
+    - postgresql-15
+    - postgresql-client-15
+    - postgresql-contrib-15
+    - libpq-dev
+    - libdbd-pg-perl
+    - libpq-dev
+    - telnet
+- name: Download Znuny latest tarball
+  ansible.builtin.get_url:
+    url: "{{ znuny_download_url }}"
+    dest: "/tmp/znuny-latest.tar.gz"
+    mode: "0644"
+
+- name: Extract Znuny into /opt
+  ansible.builtin.unarchive:
+    src: "/tmp/znuny-latest.tar.gz"
+    dest: "{{ znuny_install_dir }}"
+    remote_src: yes
+
+# The extracted folder name changes (e.g. znuny-7.2.3), so detect it:
+- name: Detect extracted Znuny directory
+  ansible.builtin.find:
+    paths: "{{ znuny_install_dir }}"
+    file_type: directory
+    patterns: "znuny-*"
+    recurse: no
+  register: znuny_dirs
+
+- name: Fail if no Znuny directory found after extract
+  ansible.builtin.fail:
+    msg: "No znuny-* directory found in {{ znuny_install_dir }} after extracting znuny-latest.tar.gz"
+  when: (znuny_dirs.files | length) == 0
+
+- name: Pick newest extracted Znuny directory
+  ansible.builtin.set_fact:
+    znuny_extracted_dir: "{{ (znuny_dirs.files | sort(attribute='mtime'))[-1].path }}"
+
+- name: Remove existing target dir if present (optional)
+  ansible.builtin.file:
+    path: "{{ znuny_target_dir }}"
+    state: absent
+  when: znuny_target_dir != znuny_extracted_dir
+
+- name: Move Znuny to /opt/otrs
+  ansible.builtin.command: mv "{{ znuny_extracted_dir }}" "{{ znuny_target_dir }}"
+  args:
+    creates: "{{ znuny_target_dir }}/Kernel/Config.pm.dist"
+
+- name: Rename the OTRS folder
+  shell: mv "{{ base_otrs_folder }}/{{ otrs_package_unpack }}" "{{ base_otrs_folder }}/otrs"
+
+- name: Create OTRS User
+  shell: |
+    useradd -d /opt/otrs -c 'OTRS user' otrs
+    usermod -G www-data otrs
+
+- name: Activate Default Config file
+  shell: cp /opt/otrs/Kernel/Config.pm.dist /opt/otrs/Kernel/Config.pm
+
+- name: Checking all Perl modules
+  shell: |
+    perl -cw /opt/otrs/bin/cgi-bin/index.pl
+    perl -cw /opt/otrs/bin/cgi-bin/customer.pl
+    perl -cw /opt/otrs/bin/otrs.Console.pl
+
+- name: Configuring Apache Web Server
+  apt:
+    package:
+    - apache2 
+    - libapache2-mod-perl2
+
+- name: Check symlink for apache2-httpd
+  stat:
+    path: /etc/apache2/sites-enabled/zzz_otrs.conf
+  register: zzz_otrs_link
+
+- name: Make symlink for apache2-httpd
+  shell: ln -s /opt/otrs/scripts/apache2-httpd.include.conf /etc/apache2/sites-enabled/zzz_otrs.conf
+  when: zzz_otrs_link.stat.exists == false
+
+- name: Activate Apache modules
+  shell: |
+    a2enmod perl
+    a2enmod deflate
+    a2enmod filter
+    a2enmod headers
+- name: Ensure apache is restarted
+  service:
+    name: apache2
+    state: reloaded
+
+- name: Set permission for OTRS
+  shell: bin/otrs.SetPermissions.pl
+  args:
+    chdir: "{{ base_otrs_folder }}/otrs"
+- name: Ensure the PostgreSQL service is running
+  service: name=postgresql state=started enabled=yes

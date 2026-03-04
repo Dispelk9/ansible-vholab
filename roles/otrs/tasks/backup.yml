@@ -1,0 +1,58 @@
+---
+- name: Ensure /usr/local/bin exists
+  ansible.builtin.file:
+    path: /usr/local/bin
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install PostgreSQL 15 packages (Debian)
+  ansible.builtin.apt:
+    update_cache: yes
+    name:
+      - "postgresql-{{ pg_major_version }}"
+      - "postgresql-client-{{ pg_major_version }}"
+      - "postgresql-contrib-{{ pg_major_version }}"
+    state: present
+
+- name: Verify PostgreSQL 15 bin dir exists
+  ansible.builtin.stat:
+    path: "{{ pg_bin_dir }}"
+  register: pg15_bindir
+
+- name: Fail if PostgreSQL 15 bin dir is missing
+  ansible.builtin.fail:
+    msg: "Expected PostgreSQL {{ pg_major_version }} binaries in {{ pg_bin_dir }}, but it does not exist."
+  when: not pg15_bindir.stat.exists
+
+- name: Fail if required DB secret is missing
+  ansible.builtin.assert:
+    that:
+      - db_password is defined
+      - db_password | length > 0
+    fail_msg: "Missing db_password (expected via vault indirection: vault_otrs_db_password in host_vars/otrs-p/vault.yml)."
+    quiet: true
+    
+- name: Ensure backup directory exists
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Install DB dump script
+  ansible.builtin.template:
+    src: "otrs-db-dump.sh.j2"
+    dest: "{{ backup_script_path }}"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create daily cronjob for DB dump
+  ansible.builtin.cron:
+    name: "Daily OTRS/Znuny PostgreSQL DB dump"
+    minute: "{{ backup_cron_minute }}"
+    hour: "{{ backup_cron_hour }}"
+    job: "{{ backup_script_path }}"

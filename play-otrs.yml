@@ -1,0 +1,9 @@
+---
+- name: Installing Znuny + backup
+  hosts: otrs-p
+  become: yes  
+  roles:
+  - otrs
+  include_vars: "{{ ansible_vault_file }}"
+  tag:
+  - otrs

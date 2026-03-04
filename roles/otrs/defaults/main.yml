@@ -1,0 +1,19 @@
+db_name: otrs
+db_user: otrs
+db_port: 5434
+db_password: ""
+
+# Znuny
+znuny_download_url: "https://download.znuny.org/releases/znuny-latest.tar.gz"
+znuny_install_dir: "/opt"
+znuny_target_dir: "/opt/otrs"
+
+# PostgreSQL
+pg_major_version: "15"
+pg_bin_dir: "/usr/lib/postgresql/{{ pg_major_version }}/bin"
+
+# Backup
+backup_dir: "/var/backups/otrs"
+backup_script_path: "/usr/local/bin/otrs-db-dump.sh"
+backup_cron_hour: "0"
+backup_cron_minute: "0"

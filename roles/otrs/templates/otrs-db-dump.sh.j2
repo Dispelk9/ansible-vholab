@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Vars
+BACKUP_DIR="/var/backups/postgresql"
+DATE=$(date +%F_%H-%M)
+DB_NAME="{{ db_name }}"
+DB_USER="{{ db_user }}"
+DB_PORT="{{ db_port }}"
+FILENAME="$BACKUP_DIR/${DB_NAME}_pg15_$DATE.sql"
+
+# Create backup with DROP statements (via --clean)
+PGPASSWORD='{{ db_password }}' /usr/lib/postgresql/15/bin/pg_dump \
+  --clean -h 127.0.0.1 -p "$DB_PORT" -U "$DB_USER" -F p "$DB_NAME" > "$FILENAME"
+
+# Optional: remove backups older than 3 days
+find "$BACKUP_DIR" -name "${DB_NAME}_pg15_*.sql" -mtime +1 -delete
+
