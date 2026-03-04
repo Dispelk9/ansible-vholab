@@ -35,5 +35,5 @@ vhohetzner2 ansible_ssh_host=195.201.27.165
 vhohetzner1 ansible_ssh_host=188.245.69.219
 
 
-[otrs]
-vholab3    ansible_ssh_host=192.168.178.32
+[otrs-p]
+otrs-p ansible_host=192.168.102.217 ansible_user=ansible

@@ -1,9 +1,10 @@
 ---
 - name: Installing Znuny + backup
   hosts: otrs-p
-  become: yes  
+  become: yes
   roles:
-  - otrs
-  include_vars: "{{ ansible_vault_file }}"
-  tag:
-  - otrs
+    - role: otrs
+      tags: [otrs]
+
+#ansible otrs-p -i inventory -m ping --ask-vault-pass
+#ansible-playbook -i inventory play-otrs.yml --ask-vault-pass -vvv

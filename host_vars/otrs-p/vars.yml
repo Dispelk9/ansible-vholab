@@ -1,0 +1,2 @@
+ansible_vault_file: vault.yml
+db_password: "{{ db_password }}"

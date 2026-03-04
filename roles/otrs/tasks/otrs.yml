@@ -1,160 +1,238 @@
-- name: Update APT Cache
-  apt:
+---
+- name: Update APT cache
+  ansible.builtin.apt:
     update_cache: yes
     force_apt_get: yes
 
-- name: Upgrade all packages on servers
-  apt: upgrade=safe force_apt_get=yes
+- name: Upgrade packages
+  ansible.builtin.apt:
+    upgrade: safe
+    force_apt_get: yes
 
-- name: Remove dependencies apt autoremove
+- name: Autoremove unused packages
   ansible.builtin.apt:
     autoremove: yes
 
-- name: Run "apt-get clean"
-  apt:
+- name: Clean apt cache
+  ansible.builtin.apt:
     autoclean: yes
 
- 
-- name: Remove apt lock file
-  file:
-    state: absent
-    path: "/var/lib/dpkg/lock"
-- name: Install required OTRS packages
-  apt:
-    package:
-    - awscli
-    - git
-    - ansible
-    - cpanminus 
-    - libapache2-mod-auth-openidc
-    - libapache2-mod-perl2 
-    - libdbd-mysql-perl 
-    - libtimedate-perl 
-    - libnet-dns-perl 
-    - libnet-ldap-perl 
-    - libio-socket-ssl-perl 
-    - libpdf-api2-perl 
-    - libsoap-lite-perl 
-    - libtext-csv-xs-perl 
-    - libjson-xs-perl 
-    - libapache-dbi-perl 
-    - libxml-libxml-perl 
-    - libxml-libxslt-perl 
-    - libyaml-perl 
-    - libarchive-zip-perl 
-    - libcrypt-eksblowfish-perl 
-    - libencode-hanextra-perl 
-    - libmail-imapclient-perl 
-    - libtemplate-perl 
-    - libdatetime-perl 
-    - libmoo-perl 
-    - bash-completion 
-    - libyaml-libyaml-perl 
-    - libjavascript-minifier-xs-perl 
-    - libcss-minifier-xs-perl 
-    - libauthen-sasl-perl 
-    - libauthen-ntlm-perl 
-    - libhash-merge-perl 
-    - libical-parser-perl 
-    - libspreadsheet-xlsx-perl 
-    - libcrypt-jwt-perl 
-    - libcrypt-openssl-x509-perl 
-    - jq
-    - libdbd-pg-perl
-    - postgresql-15
-    - postgresql-client-15
-    - postgresql-contrib-15
-    - libpq-dev
-    - libdbd-pg-perl
-    - libpq-dev
-    - telnet
-- name: Download Znuny latest tarball
+# -----------------------------
+# Packages (Znuny + Apache + Perl + PostgreSQL 15)
+# -----------------------------
+- name: Install required packages
+  ansible.builtin.apt:
+    state: present
+    name:
+      - awscli
+      - git
+      - ansible
+      - cpanminus
+      - jq
+      - telnet
+
+      # Apache + mod_perl
+      - apache2
+      - libapache2-mod-perl2
+      - libapache2-mod-auth-openidc
+
+      # PostgreSQL 15 + client libs
+      - "postgresql-{{ pg_major_version }}"
+      - "postgresql-client-{{ pg_major_version }}"
+      - "postgresql-contrib-{{ pg_major_version }}"
+      - libpq-dev
+      - libdbd-pg-perl
+
+      # Perl deps (existing list)
+      - libdbd-mysql-perl
+      - libtimedate-perl
+      - libnet-dns-perl
+      - libnet-ldap-perl
+      - libio-socket-ssl-perl
+      - libpdf-api2-perl
+      - libsoap-lite-perl
+      - libtext-csv-xs-perl
+      - libjson-xs-perl
+      - libapache-dbi-perl
+      - libxml-libxml-perl
+      - libxml-libxslt-perl
+      - libyaml-perl
+      - libarchive-zip-perl
+      - libcrypt-eksblowfish-perl
+      - libencode-hanextra-perl
+      - libmail-imapclient-perl
+      - libtemplate-perl
+      - libdatetime-perl
+      - libmoo-perl
+      - bash-completion
+      - libyaml-libyaml-perl
+      - libjavascript-minifier-xs-perl
+      - libcss-minifier-xs-perl
+      - libauthen-sasl-perl
+      - libauthen-ntlm-perl
+      - libhash-merge-perl
+      - libical-parser-perl
+      - libspreadsheet-xlsx-perl
+      - libcrypt-jwt-perl
+      - libcrypt-openssl-x509-perl
+
+# -----------------------------
+# Download + extract Znuny latest
+# -----------------------------
+# Download pinned Znuny
+- name: Download Znuny {{ znuny_version }}
   ansible.builtin.get_url:
     url: "{{ znuny_download_url }}"
-    dest: "/tmp/znuny-latest.tar.gz"
+    dest: "/tmp/znuny-{{ znuny_version }}.tar.gz"
     mode: "0644"
 
-- name: Extract Znuny into /opt
+# Extract into /opt (creates /opt/znuny-6.5.15)
+- name: Extract Znuny into {{ znuny_install_dir }}
   ansible.builtin.unarchive:
-    src: "/tmp/znuny-latest.tar.gz"
+    src: "/tmp/znuny-{{ znuny_version }}.tar.gz"
     dest: "{{ znuny_install_dir }}"
     remote_src: yes
 
-# The extracted folder name changes (e.g. znuny-7.2.3), so detect it:
-- name: Detect extracted Znuny directory
-  ansible.builtin.find:
-    paths: "{{ znuny_install_dir }}"
-    file_type: directory
-    patterns: "znuny-*"
-    recurse: no
-  register: znuny_dirs
-
-- name: Fail if no Znuny directory found after extract
-  ansible.builtin.fail:
-    msg: "No znuny-* directory found in {{ znuny_install_dir }} after extracting znuny-latest.tar.gz"
-  when: (znuny_dirs.files | length) == 0
-
-- name: Pick newest extracted Znuny directory
+- name: Set versioned install directory
   ansible.builtin.set_fact:
-    znuny_extracted_dir: "{{ (znuny_dirs.files | sort(attribute='mtime'))[-1].path }}"
+    znuny_version_dir: "{{ znuny_install_dir }}/znuny-{{ znuny_version }}"
 
-- name: Remove existing target dir if present (optional)
+- name: Fail if extracted directory not found
+  ansible.builtin.stat:
+    path: "{{ znuny_version_dir }}"
+  register: znuny_version_dir_stat
+
+- name: Abort if version dir missing
+  ansible.builtin.fail:
+    msg: "Expected {{ znuny_version_dir }} to exist after extraction."
+  when: not znuny_version_dir_stat.stat.exists
+
+# Canonical: /opt/otrs -> /opt/znuny-6.5.15
+- name: Point /opt/otrs to Znuny {{ znuny_version }}
   ansible.builtin.file:
-    path: "{{ znuny_target_dir }}"
-    state: absent
-  when: znuny_target_dir != znuny_extracted_dir
+    src: "{{ znuny_version_dir }}"
+    dest: "{{ znuny_target_dir }}"
+    state: link
+    force: true
+# -----------------------------
+# Znuny/OTRS user + base config
+# -----------------------------
+- name: Ensure otrs user exists
+  ansible.builtin.user:
+    name: otrs
+    comment: "OTRS/Znuny user"
+    home: "{{ znuny_target_dir }}"
+    shell: /bin/bash
+    system: yes
+    create_home: no
 
-- name: Move Znuny to /opt/otrs
-  ansible.builtin.command: mv "{{ znuny_extracted_dir }}" "{{ znuny_target_dir }}"
-  args:
-    creates: "{{ znuny_target_dir }}/Kernel/Config.pm.dist"
+- name: Ensure otrs user in www-data group
+  ansible.builtin.user:
+    name: otrs
+    groups: www-data
+    append: yes
 
-- name: Rename the OTRS folder
-  shell: mv "{{ base_otrs_folder }}/{{ otrs_package_unpack }}" "{{ base_otrs_folder }}/otrs"
+- name: Activate default Config.pm if missing
+  ansible.builtin.copy:
+    src: "{{ znuny_target_dir }}/Kernel/Config.pm.dist"
+    dest: "{{ znuny_target_dir }}/Kernel/Config.pm"
+    remote_src: yes
+    owner: root
+    group: root
+    mode: "0644"
+    force: no
 
-- name: Create OTRS User
-  shell: |
-    useradd -d /opt/otrs -c 'OTRS user' otrs
-    usermod -G www-data otrs
+- name: Check Perl scripts compile
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - "perl -cw {{ znuny_target_dir }}/bin/cgi-bin/index.pl"
+    - "perl -cw {{ znuny_target_dir }}/bin/cgi-bin/customer.pl"
+    - "perl -cw {{ znuny_target_dir }}/bin/otrs.Console.pl"
+  changed_when: false
 
-- name: Activate Default Config file
-  shell: cp /opt/otrs/Kernel/Config.pm.dist /opt/otrs/Kernel/Config.pm
-
-- name: Checking all Perl modules
-  shell: |
-    perl -cw /opt/otrs/bin/cgi-bin/index.pl
-    perl -cw /opt/otrs/bin/cgi-bin/customer.pl
-    perl -cw /opt/otrs/bin/otrs.Console.pl
-
-- name: Configuring Apache Web Server
-  apt:
-    package:
-    - apache2 
-    - libapache2-mod-perl2
-
-- name: Check symlink for apache2-httpd
-  stat:
+# -----------------------------
+# Apache configuration (Debian default style: conf-available + a2enconf)
+# -----------------------------
+- name: Remove legacy sites-enabled config if present
+  ansible.builtin.file:
     path: /etc/apache2/sites-enabled/zzz_otrs.conf
-  register: zzz_otrs_link
+    state: absent
 
-- name: Make symlink for apache2-httpd
-  shell: ln -s /opt/otrs/scripts/apache2-httpd.include.conf /etc/apache2/sites-enabled/zzz_otrs.conf
-  when: zzz_otrs_link.stat.exists == false
+- name: Ensure Apache runs with prefork MPM (required for mod_perl)
+  block:
+    - name: Disable mpm_event
+      ansible.builtin.command: a2dismod mpm_event
+      register: a2dismod_mpm_event
+      changed_when: "'disabled' in a2dismod_mpm_event.stdout"
+      failed_when: false
 
-- name: Activate Apache modules
-  shell: |
-    a2enmod perl
-    a2enmod deflate
-    a2enmod filter
-    a2enmod headers
-- name: Ensure apache is restarted
-  service:
+    - name: Enable mpm_prefork
+      ansible.builtin.command: a2enmod mpm_prefork
+      register: a2enmod_mpm_prefork
+      changed_when: "'Enabling module' in a2enmod_mpm_prefork.stdout"
+      failed_when: false
+
+- name: Enable required Apache modules for Znuny
+  ansible.builtin.command: "a2enmod {{ item }}"
+  loop:
+    - perl
+    - headers
+    - deflate
+    - filter
+    - cgi
+  register: a2enmod_result
+  changed_when: "'Enabling module' in a2enmod_result.stdout"
+  failed_when: false
+
+- name: Install Znuny Apache include into conf-available
+  ansible.builtin.file:
+    src: "{{ znuny_target_dir }}/scripts/apache2-httpd.include.conf"
+    dest: /etc/apache2/conf-available/zzz_znuny.conf
+    state: link
+    force: true
+
+- name: Enable Znuny Apache conf
+  ansible.builtin.command: a2enconf zzz_znuny
+  changed_when: false
+
+# Optional, removes the FQDN warning (not fatal)
+- name: Ensure global ServerName is set
+  ansible.builtin.copy:
+    dest: /etc/apache2/conf-available/servername.conf
+    content: "ServerName 127.0.1.1\n"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable servername conf
+  ansible.builtin.command: a2enconf servername
+  register: a2enconf_servername
+  changed_when: "'Enabling conf' in a2enconf_servername.stdout"
+  failed_when: false
+
+- name: Validate Apache configuration
+  ansible.builtin.command: apache2ctl -t
+  changed_when: false
+
+- name: Restart apache2
+  ansible.builtin.service:
     name: apache2
-    state: reloaded
+    state: restarted
+    enabled: true
 
-- name: Set permission for OTRS
-  shell: bin/otrs.SetPermissions.pl
+# -----------------------------
+# Permissions
+# -----------------------------
+- name: Set permissions for Znuny
+  ansible.builtin.command: >
+    bin/otrs.SetPermissions.pl --znuny-user {{ znuny_user }} --web-group {{ znuny_web_group }}
   args:
-    chdir: "{{ base_otrs_folder }}/otrs"
-- name: Ensure the PostgreSQL service is running
-  service: name=postgresql state=started enabled=yes
+    chdir: "{{ znuny_target_dir }}"
+# -----------------------------
+# PostgreSQL service
+# -----------------------------
+- name: Ensure PostgreSQL is running
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: yes

@@ -2,11 +2,14 @@ db_name: otrs
 db_user: otrs
 db_port: 5434
 db_password: ""
-
+base_otrs_folder: /opt/
 # Znuny
-znuny_download_url: "https://download.znuny.org/releases/znuny-latest.tar.gz"
+znuny_version: "6.5.15"
 znuny_install_dir: "/opt"
 znuny_target_dir: "/opt/otrs"
+znuny_download_url: "https://download.znuny.org/releases/znuny-6.5.15.tar.gz"
+znuny_user: otrs
+znuny_web_group: www-data
 
 # PostgreSQL
 pg_major_version: "15"
