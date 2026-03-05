@@ -184,6 +184,14 @@
   changed_when: "'Enabling module' in a2enmod_result.stdout"
   failed_when: false
 
+- name: Install Znuny Apache include config
+  ansible.builtin.template:
+    src: apache2-httpd.include.conf.j2
+    dest: "{{ znuny_target_dir }}/scripts/apache2-httpd.include.conf"
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Install Znuny Apache include into conf-available
   ansible.builtin.file:
     src: "{{ znuny_target_dir }}/scripts/apache2-httpd.include.conf"

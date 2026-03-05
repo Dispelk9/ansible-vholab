@@ -1,0 +1,195 @@
+# --
+# added for OTRS (http://otrs.org/)
+# --
+
+ScriptAlias /otrs/ "/opt/otrs/bin/cgi-bin/"
+Alias /otrs-web/ "/opt/otrs/var/httpd/htdocs/"
+RedirectMatch ^/$ /otrs/
+
+<IfModule mod_perl.c>
+
+    # Setup environment and preload modules
+    Perlrequire /opt/otrs/scripts/apache2-perl-startup.pl
+
+    # Reload Perl modules when changed on disk
+    PerlModule Apache2::Reload
+    PerlInitHandler Apache2::Reload
+
+
+    # OIDCProviderMetadataURL https://login.microsoftonline.com/07f8138c-a3e4-4be5-842b-9ecc3da58cf4/v2.0/.well-known/openid-configuration
+    # OIDCClientID c79e130a-142d-461a-ac92-6765fd6d3c96
+    # OIDCClientSecret
+    # OIDCRedirectURI  https://your_domain/otrs/redirect_uri/
+    # OIDCCryptoPassphrase 123456
+    # OIDCRemoteUserClaim email
+    # OIDCScope "openid email profile"
+    # OIDCProviderTokenEndpoint https://login.microsoftonline.com/07f8138c-a3e4-4be5-842b-9ecc3da58cf4/oauth2/v2.0/token
+    # OIDCProviderUserInfoEndpoint https://graph.microsoft.com/oidc/userinfo
+
+    # general mod_perl2 options
+    <Location /otrs/>
+#       AuthType openid-connect
+#        Require valid-user
+        LogLevel debug
+#        ErrorDocument 403 /otrs/customer.pl
+        ErrorDocument 403 /otrs/index.pl
+        SetHandler  perl-script
+        PerlResponseHandler ModPerl::Registry
+        Options +ExecCGI
+        PerlOptions +ParseHeaders
+        PerlOptions +SetupEnv
+
+        <IfModule mod_version.c>
+            <IfVersion < 2.4>
+                Order allow,deny
+                Allow from all
+            </IfVersion>
+            <IfVersion >= 2.4>
+#                Require all granted
+            </IfVersion>
+        </IfModule>
+        <IfModule !mod_version.c>
+            Order allow,deny
+            Allow from all
+        </IfModule>
+    </Location>
+    <Location /otrs/redirect_uri>
+        AuthType openid-connect
+        Require valid-user
+        LogLevel debug
+    </Location>
+   # You can protect any other location by adding these as needed.
+    <Location />
+       AuthType openid-connect
+       Require valid-user
+    </Location>
+    # mod_perl2 options for GenericInterface
+    <Location /otrs/nph-genericinterface.pl>
+        PerlOptions -ParseHeaders
+    </Location>
+
+
+</IfModule>
+
+<Directory "/opt/otrs/bin/cgi-bin/">
+    AllowOverride None
+    Options +ExecCGI -Includes
+
+    <IfModule mod_version.c>
+        <IfVersion < 2.4>
+            Order allow,deny
+            Allow from all
+        </IfVersion>
+        <IfVersion >= 2.4>
+            Require all granted
+        </IfVersion>
+    </IfModule>
+    <IfModule !mod_version.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+
+    <IfModule mod_filter.c>
+        <IfModule mod_deflate.c>
+            AddOutputFilterByType DEFLATE text/html text/javascript application/javascript text/css text/xml application/json text/json
+         </IfModule>
+    </IfModule>
+
+</Directory>
+
+<Directory "/opt/otrs/var/httpd/htdocs/">
+    AllowOverride None
+
+    <IfModule mod_version.c>
+        <IfVersion < 2.4>
+            Order allow,deny
+            Allow from all
+        </IfVersion>
+        <IfVersion >= 2.4>
+            Require all granted
+        </IfVersion>
+    </IfModule>
+    <IfModule !mod_version.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+
+    <IfModule mod_filter.c>
+        <IfModule mod_deflate.c>
+            AddOutputFilterByType DEFLATE text/html text/javascript application/javascript text/css text/xml application/json text/json
+         </IfModule>
+    </IfModule>
+
+    # Make sure CSS and JS files are read as UTF8 by the browsers.
+    AddCharset UTF-8 .css
+    AddCharset UTF-8 .js
+
+    # Set explicit mime type for woff fonts since it is relatively new and apache may not know about it.
+    AddType application/font-woff .woff
+
+</Directory>
+
+# Allow access to public interface for unauthenticated requests on systems with set-up authentication.
+# Will work only for RegistrationUpdate, since page resources are still not be loaded.
+# <Location /otrs/public.pl>
+#     <IfModule mod_version.c>
+#         <IfVersion < 2.4>
+#             Order allow,deny
+#             Allow from all
+#         </IfVersion>
+#         <IfVersion >= 2.4>
+#             Require all granted
+#         </IfVersion>
+#     </IfModule>
+#     <IfModule !mod_version.c>
+#         Order allow,deny
+#         Allow from all
+#     </IfModule>
+# </Location>
+
+<IfModule mod_headers.c>
+    # Cache css-cache for 30 days
+    <Directory "/opt/otrs/var/httpd/htdocs/skins/*/*/css-cache">
+        <FilesMatch "\.(css|CSS)$">
+            Header set Cache-Control "max-age=2592000, must-revalidate"
+        </FilesMatch>
+    </Directory>
+
+    # Cache css thirdparty for 4 hours, including icon fonts
+    <Directory "/opt/otrs/var/httpd/htdocs/skins/*/*/css/thirdparty">
+        <FilesMatch "\.(css|CSS|woff|svg)$">
+            Header set Cache-Control "max-age=14400, must-revalidate"
+        </FilesMatch>
+    </Directory>
+
+    # Cache js-cache for 30 days
+    <Directory "/opt/otrs/var/httpd/htdocs/js/js-cache">
+        <FilesMatch "\.(js|JS)$">
+            Header set Cache-Control "max-age=2592000, must-revalidate"
+        </FilesMatch>
+    </Directory>
+
+    # Cache js thirdparty for 4 hours
+    <Directory "/opt/otrs/var/httpd/htdocs/js/thirdparty/">
+        <FilesMatch "\.(js|JS)$">
+            Header set Cache-Control "max-age=14400, must-revalidate"
+        </FilesMatch>
+    </Directory>
+</IfModule>
+
+# Limit the number of requests per child to avoid excessive memory usage
+MaxRequestsPerChild 4000
+
+# <VirtualHost *:443>
+#     ServerName your_domain
+
+#     # SSL Configuration (Assuming SSL is configured)
+#     SSLEngine on
+#     SSLCertificateFile /opt/certs/your_domain.crt
+#     SSLCertificateKeyFile /opt/certs/your_domain.key
+#     #
+#     LogLevel auth_openidc:debug
+#     ErrorLog /var/log/apache2/oidc_error.log
+#     CustomLog /var/log/apache2/oidc_access.log combined
+
+# </VirtualHost>
