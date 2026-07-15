@@ -12,11 +12,19 @@
   register: _diode_pull
   changed_when: "'Pulled' in _diode_pull.stdout or 'Downloaded newer image' in _diode_pull.stdout"
 
+# Retries absorb a transient race after reset.yml's `docker compose down`:
+# the port this project publishes (diode_nginx_bind_port) can briefly still
+# be held by the kernel/docker-proxy right after the previous container
+# using it is removed, so the very next `up` can fail with "port is already
+# allocated" even though nothing is actually still listening moments later.
 - name: Start the Diode server stack
   ansible.builtin.command: docker compose up -d
   args:
     chdir: "{{ diode_dir }}"
   register: _diode_up
+  until: _diode_up.rc == 0
+  retries: 3
+  delay: 5
   changed_when: "'Created' in _diode_up.stderr or 'Started' in _diode_up.stderr or 'Recreated' in _diode_up.stderr"
 
 - name: Confirm all Diode server containers are running

@@ -15,6 +15,12 @@
 # --- Diode server's own internal state stores (independent of NetBox's own DB/redis) ---
 diode_redis_password: "CHANGE-ME"
 diode_postgres_password: "CHANGE-ME"
+# Hydra's own database role/password (separate role in the same postgres
+# instance - see roles/diode_server/defaults/main.yml hydra_postgres_*)
+hydra_postgres_password: "CHANGE-ME"
+# Encrypts Hydra's own DB records (OAuth2 sessions/tokens) - must be >=32
+# chars. Rotating this invalidates all existing Hydra sessions/tokens.
+hydra_secrets_system_0: "CHANGE-ME"
 
 # --- OAuth2 client secrets Diode's auth-bootstrap container provisions on first start ---
 # Reconciler -> NetBox plugin API

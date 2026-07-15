@@ -2,6 +2,9 @@
 - name: Pre-flight checks (disk space, shared Docker network)
   ansible.builtin.import_tasks: preflight.yml
 
+- name: Tear down any previous Diode server deploy before recreating it
+  ansible.builtin.import_tasks: reset.yml
+
 - name: Fetch the pinned, official Diode server compose file
   ansible.builtin.import_tasks: fetch_compose.yml
 

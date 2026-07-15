@@ -41,3 +41,25 @@
     mode: "0644"
     force: true
   register: _diode_compose_fetch
+
+# docker-compose.yaml bind-mounts ./nginx/nginx.conf into the ingress-nginx
+# service (read-only). Without fetching this ourselves, Docker silently
+# creates an empty directory at that path instead of erroring, and nginx
+# comes up with no config (upstream's own quickstart.sh fetches this file
+# too - see diode-server/docker/scripts/quickstart.sh).
+- name: Ensure the nginx config directory exists
+  ansible.builtin.file:
+    path: "{{ diode_dir }}/nginx"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Fetch the official nginx.conf (never modified upstream)
+  ansible.builtin.get_url:
+    url: "{{ diode_server_nginx_conf_url }}"
+    dest: "{{ diode_dir }}/nginx/nginx.conf"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true

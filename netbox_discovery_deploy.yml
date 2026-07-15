@@ -30,6 +30,8 @@
         that:
           - diode_redis_password is defined
           - diode_postgres_password is defined
+          - hydra_postgres_password is defined
+          - hydra_secrets_system_0 is defined
           - diode_to_netbox_client_secret is defined
           - netbox_to_diode_client_secret is defined
           - orb_diode_client_secret is defined

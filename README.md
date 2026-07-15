@@ -53,6 +53,57 @@ Before first run:
   because of an open NetBox-migration issue on the newest version - see
   `roles/netbox_diode_plugin/defaults/main.yml` for the tracking link before
   bumping it.
+- New vault secrets as of the postgres/hydra env-var fix below:
+  `hydra_postgres_password` and `hydra_secrets_system_0` (>=32 chars) - add
+  both to `host_vars/vhohetzner1/vault.yml` alongside the existing secrets
+  before running.
+
+Re-running / redeploying:
+- Every run of `netbox_discovery_deploy.yml` (or `--tags diode_server`) tears
+  down and recreates the Diode server's own containers **and volumes**
+  (`docker compose down --volumes --remove-orphans` in
+  `/opt/netbox/discovery/diode`) before redeploying - see
+  `roles/diode_server/tasks/reset.yml`. This is deliberate and safe: nothing
+  in Diode's own postgres/redis is source-of-truth data (that's NetBox's
+  job), it's just OAuth2 client state and reconciler dedup state, both fully
+  reconstructable from `.env` / `oauth2/client/client-credentials.json` on
+  the next `up`.
+- This matters because Postgres only ever runs its
+  `/docker-entrypoint-initdb.d` init scripts once, against an empty data
+  directory. If a deploy fails partway through (e.g. a missing env var, like
+  the one that caused `diode-postgres-1` to go unhealthy before this fix),
+  the data volume is left initialized-but-incomplete - simply fixing the
+  config and re-running `docker compose up -d` by hand will **not** retry
+  that init script, so it stays broken forever without a clean volume. The
+  automatic reset is what makes re-running the playbook after a config fix
+  actually work.
+- Set `diode_server_reset_on_deploy: false` in `group_vars/vhodockers.yml`
+  once the stack is validated and stable, if you'd rather preserve Diode's
+  state across future re-runs (e.g. you don't want to re-authenticate
+  Orb/NetBox on every playbook run).
+- To reset by hand without Ansible:
+  `cd /opt/netbox/discovery/diode && docker compose down --volumes --remove-orphans`
+- **Scope**: none of the above ever touches the actual NetBox containers
+  (`netbox-docker-netbox-1`, `netbox-docker-netbox-worker-1`,
+  `netbox-docker-postgres-1`, `netbox-docker-redis-1`,
+  `netbox-docker-redis-cache-1` - the `netbox-docker` compose project
+  deployed by `netbox_deploy.yml`/`roles/netbox`). Those hold NetBox's real
+  inventory data and are never recreated or reset by
+  `netbox_discovery_deploy.yml`.
+
+If you do need to fully wipe and redeploy NetBox itself (not the discovery
+stack) - e.g. starting over from scratch - this is destructive and drops all
+inventory data in NetBox's own database. `roles/netbox` has no backup step
+of its own (the `netbox_backup_dir` used elsewhere in this repo is only for
+the diode_server/netbox_diode_plugin roles' own config file backups -
+`.env`, `plugins.py`, `client-credentials.json` - not NetBox's database), so
+take one manually first:
+`docker compose exec netbox /opt/netbox/netbox/manage.py dumpdata > backup.json`,
+or a `pg_dump` of `netbox-docker-postgres-1`. Once you have a backup:
+
+    cd /opt/netbox/netbox-docker
+    docker compose down --volumes --remove-orphans
+    # then re-run netbox_deploy.yml to recreate it from scratch
 
 ###
 playbc<br />

@@ -20,9 +20,11 @@ netbox_install_dir: /opt/netbox
 netbox_compose_project_name: netbox-docker
 docker_discovery_network_name: netbox_discovery_net
 
-# Pin to an exact tag (e.g. "v2.1.0") once validated - "release" tracks
-# whatever the upstream quickstart.sh script currently points at.
-diode_server_compose_ref: "release"
+# diode_server_compose_ref is NOT overridden here - roles/diode_server/defaults/main.yml
+# now pins it to a validated commit SHA (was "release", a floating branch
+# ref - that drift is exactly what broke env.j2's variable names against
+# what upstream's docker-compose.yaml actually expects). Re-pin there, not
+# here, when you validate a newer ref.
 
 # NOT 8080/8081 - both already bound on this host by unrelated containers
 # (app-backend-1, app-frontend-1). See roles/diode_server/defaults/main.yml.
@@ -32,10 +34,18 @@ diode_plugin_version: "1.12.0"   # see roles/netbox_diode_plugin/defaults for wh
 
 orb_image_tag: "2.11.0"
 
+# Repeated from roles/orb_agent/defaults/main.yml: diode_server's
+# client-credentials.json.j2 needs this to register Orb's ingest client in
+# Hydra, but diode_server runs before orb_agent in
+# netbox_discovery_deploy.yml, so orb_agent's own role defaults aren't
+# loaded into the play yet when diode_server's templates render.
+orb_diode_client_id: "orb-agent"
+
 # STILL A PLACEHOLDER - replace with the real network(s)/CIDR you have
 # permission to scan before flipping orb_dry_run to false. See
 # roles/orb_agent/defaults/main.yml for why this isn't guessed.
 orb_discovery_targets:
   - "192.0.2.0/24"
+  - "10.0.0.0/24"
 
 orb_dry_run: true

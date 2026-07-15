@@ -1,0 +1,28 @@
+---
+# Postgres only ever runs /docker-entrypoint-initdb.d once, against an empty
+# data directory. If a previous deploy failed partway through (e.g. because
+# env.j2 was missing a variable postgres's init script needed), the
+# diode-postgres-data volume is left initialized-but-incomplete - simply
+# fixing the config and re-running `docker compose up -d` will NOT retry
+# that init script, so it stays broken forever without a clean volume.
+#
+# Nothing in Diode's own postgres/redis is source-of-truth data (that's
+# NetBox's job) - it's OAuth2 state and reconciler dedup state, both fully
+# reconstructable - so tearing it down on every deploy is safe. This never
+# touches the netbox-docker compose project (NetBox's own containers) -
+# only the "diode" compose project in diode_dir.
+
+- name: Check whether a previous Diode server deploy exists
+  ansible.builtin.stat:
+    path: "{{ diode_dir }}/docker-compose.yaml"
+  register: _diode_prior_compose_stat
+
+- name: Tear down the previous Diode server stack (containers + volumes)
+  ansible.builtin.command: docker compose down --volumes --remove-orphans
+  args:
+    chdir: "{{ diode_dir }}"
+  when:
+    - diode_server_reset_on_deploy | bool
+    - _diode_prior_compose_stat.stat.exists
+  register: _diode_reset
+  changed_when: "'Removed' in _diode_reset.stderr or 'Removing' in _diode_reset.stderr"

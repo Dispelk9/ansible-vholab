@@ -8,6 +8,13 @@
 #    without needing to know/guess every individual service name.
 # 2. Publishes the nginx front door on the host so Orb Agent (which runs
 #    with network_mode: host) and any external Diode Agents can reach it.
+# 3. Fixes an upstream bug in the pinned docker-compose.yaml: diode-auth-bootstrap's
+#    command runs /etc/config/oauth2/client/bootstrap-clients.sh, but
+#    Dockerfile.auth bakes the script at /etc/config/oauth2/bootstrap-clients.sh
+#    (no "client" subdir) - and our own oauth2/client volume mount (see
+#    client-credentials.json.j2) shadows that subdir with just our
+#    credentials file, so the script genuinely isn't there. Without this
+#    override the container crash-loops (exit 1, restart, repeat) forever.
 #
 # Upstream service healthchecks are sparse (only postgres has one as of
 # this writing) - rather than guess at container-exec healthchecks that may
@@ -22,3 +29,6 @@ services:
   "{{ diode_frontend_service }}":
     ports:
       - "{{ diode_nginx_bind_ip }}:{{ diode_nginx_bind_port }}:{{ diode_nginx_internal_port }}"
+
+  diode-auth-bootstrap:
+    command: ["/bin/sh", "/etc/config/oauth2/bootstrap-clients.sh"]

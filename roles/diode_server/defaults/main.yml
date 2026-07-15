@@ -31,12 +31,23 @@ discovery_min_free_gb: 3
 # pattern as `helm fetch` or grabbing a GitHub release asset. We never clone
 # the netboxlabs/diode repo or edit the fetched file in place.
 #
-# "release" tracks the latest tagged release (the same ref the project's own
-# quickstart.sh script uses). Pin this to an exact tag (e.g. "v2.1.0") once
-# you've validated a specific version, for fully reproducible deploys.
-diode_server_compose_ref: "release"
+# Pinned to the exact commit the "release" branch pointed at when this role
+# was last validated against it (2026-07-15) - NOT the floating "release"
+# branch name itself. That floating ref is what caused env.j2 to silently
+# drift out of sync with upstream's actual schema (DIODE_POSTGRES_*,
+# HYDRA_POSTGRES_*, HYDRA_* vars didn't exist in this file at all, so
+# postgres's init script got blank values and never came up healthy).
+# There's no single monolithic version tag for this path (netboxlabs/diode
+# tags each component separately, e.g. diode-reconciler/v2.1.0) - re-pin by
+# resolving the "release" branch's current commit
+# (https://api.github.com/repos/netboxlabs/diode/commits/release), re-diff
+# docker-compose.yaml + sample.env against templates/env.j2, then update
+# this SHA.
+diode_server_compose_ref: "c017ee191aab5b88327e03987a9c6de3f887e8ad"
 diode_server_compose_url: >-
   https://raw.githubusercontent.com/netboxlabs/diode/{{ diode_server_compose_ref }}/diode-server/docker/docker-compose.yaml
+diode_server_nginx_conf_url: >-
+  https://raw.githubusercontent.com/netboxlabs/diode/{{ diode_server_compose_ref }}/diode-server/docker/nginx/nginx.conf
 
 # Where the Diode server's client-facing gRPC endpoint (fronted by nginx)
 # listens. Internal container port is stable at 8080 per upstream; the host
@@ -61,12 +72,51 @@ diode_frontend_service_fallback: "ingress-nginx"
 
 # Postgres + Redis credentials for Diode's own internal state (distinct from
 # NetBox's own postgres/redis - a fully separate Compose project).
-# Passwords (diode_redis_password, diode_postgres_password) live in
+# Passwords (diode_redis_password, diode_postgres_password,
+# hydra_postgres_password, hydra_secrets_system_0) live in
 # host_vars/vhohetzner1/vault.yml (ansible-vault encrypted).
 diode_postgres_db: diode
 diode_postgres_user: diode
+# The postgres container's own bootstrap superuser (see env.j2) - must not
+# be "diode", or the init script's `CREATE USER diode` fails because it's
+# already connected as that user.
+diode_postgres_bootstrap_user: postgres
 
-# OAuth2 client IDs bootstrap-provisions on first start (secrets in vault).
+# Hydra (OAuth2 server) gets its own database + role in the same postgres
+# instance, created by the same init script.
+hydra_postgres_db: hydra
+hydra_postgres_user: hydra
+
+# Static Hydra tuning values - upstream sample.env's own defaults, no reason
+# to deviate yet. hydra_secrets_system_0 (>=32 chars, used to encrypt
+# Hydra's own DB records) lives in vault - generate with `openssl rand
+# -base64 32` same as the other vault secrets.
+hydra_strategies_access_token: "jwt"
+hydra_strategies_refresh_token: "jwt"
+hydra_strategies_jwt_scope_claim: "both"
+hydra_ttl_access_token: "1h"
+hydra_oidc_subject_identifiers_supported_types: "public"
+# Deliberately "hydra" (the in-network service name), not upstream
+# sample.env's "http://127.0.0.1:4444" default - introspection calls happen
+# container-to-container on docker_discovery_network_name, where 127.0.0.1
+# would resolve to the calling container itself, not Hydra.
+hydra_urls_self_issuer: "http://hydra:4444"
+
+auth_http_port: 8080
+
+diode_logging_level: "info"
+diode_sentry_dsn: ""
+diode_telemetry_traces_exporter: "none"
+diode_telemetry_environment: "production"
+
+# OAuth2 client IDs bootstrap-provisions on first start via
+# oauth2/client/client-credentials.json (see client-credentials.json.j2) -
+# secrets in vault. Orb Agent's ingest client (orb_diode_client_id /
+# orb_diode_client_secret) is defined in roles/orb_agent/defaults/main.yml
+# but also needed here to render that file - repeated in
+# group_vars/vhodockers.yml since diode_server runs before orb_agent in
+# netbox_discovery_deploy.yml, so orb_agent's role defaults aren't loaded
+# yet at this point in the play.
 diode_to_netbox_client_id: "diode-to-netbox"
 netbox_to_diode_client_id: "netbox-to-diode"
 
@@ -78,3 +128,15 @@ diode_health_retries: 20
 diode_health_delay: 5
 
 netbox_backup_dir: "{{ netbox_install_dir }}/backups"
+
+# Every run tears down and recreates the Diode server's own containers +
+# volumes (postgres/redis data included) before redeploying - see
+# tasks/reset.yml. Safe by design: nothing in Diode's own postgres/redis is
+# source-of-truth data (that's NetBox's job), it's just OAuth2 state and
+# reconciler dedup state, both fully reconstructable. This also sidesteps
+# postgres only ever running /docker-entrypoint-initdb.d once - without a
+# clean volume, a previously-failed deploy (e.g. from missing env vars)
+# stays broken forever even after fixing the config, because the init
+# script never gets a chance to re-run. Set to false once the stack is
+# validated and stable if you'd rather preserve state across re-runs.
+diode_server_reset_on_deploy: true

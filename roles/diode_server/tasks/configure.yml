@@ -29,6 +29,36 @@
     group: root
     mode: "0644"
 
+- name: Ensure the OAuth2 client directory exists
+  ansible.builtin.file:
+    path: "{{ diode_dir }}/oauth2/client"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Stat existing OAuth2 client-credentials.json
+  ansible.builtin.stat:
+    path: "{{ diode_dir }}/oauth2/client/client-credentials.json"
+  register: _diode_client_creds_stat
+
+- name: Back up existing client-credentials.json before replacing it
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ diode_dir }}/oauth2/client/client-credentials.json"
+    dest: "{{ netbox_backup_dir }}/diode-client-credentials.json.{{ netbox_backup_timestamp }}.bak"
+    mode: "0600"
+  when: _diode_client_creds_stat.stat.exists
+
+- name: Template OAuth2 client-credentials.json (diode-to-netbox / netbox-to-diode / orb-agent ingest clients)
+  ansible.builtin.template:
+    src: client-credentials.json.j2
+    dest: "{{ diode_dir }}/oauth2/client/client-credentials.json"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
 - name: Template docker-compose.override.yml (network + port publish only)
   ansible.builtin.template:
     src: docker-compose.override.yml.j2
