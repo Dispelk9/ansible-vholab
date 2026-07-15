@@ -1,0 +1,42 @@
+---
+netbox_install_dir: /opt/netbox
+orb_dir: "{{ netbox_install_dir }}/discovery/orb"
+orb_compose_project_name: orb
+orb_image: "netboxlabs/orb-agent"
+orb_image_tag: "2.11.0"
+
+orb_health_retries: 20
+orb_health_delay: 5
+
+# true (default/safe): agent.yaml sets backends.common.diode.dry_run: true,
+# which writes discovered inventory as JSON files instead of calling Diode -
+# target/client_id/secret are not required in this mode. Flip to false only
+# after reviewing dry-run output.
+orb_dry_run: true
+orb_dry_run_output_dir: "/opt/orb/dry-run"
+
+# Where Orb reaches Diode once orb_dry_run: false. Orb runs with
+# network_mode: host (required for raw scanning - see docs), so it must
+# address Diode via the host-published port, not a container name on the
+# shared bridge network. Must match diode_server's diode_nginx_bind_port
+# (8180 on this host - see roles/diode_server/defaults/main.yml).
+diode_nginx_bind_ip: "127.0.0.1"
+diode_nginx_bind_port: 8180
+orb_diode_client_id: "orb-agent"
+
+# Discovery target(s) for the network_discovery backend's default policy.
+#
+# UNSET FOR THIS HOST ON PURPOSE - the live host (188.245.69.219) is a
+# public Hetzner VPS; there's no private LAN/vSwitch visible from its own
+# `docker ps -a` to infer a sane default from, and scan-target selection has
+# real legal/AUP implications (scanning ranges you don't control can violate
+# your hosting provider's terms). This is deliberately a non-routable
+# RFC 5737 placeholder, not a guess - replace with the actual network(s) you
+# have permission to scan before flipping orb_dry_run to false.
+orb_discovery_targets:
+  - "192.0.2.0/24"
+orb_discovery_schedule: "*/15 * * * *"
+orb_discovery_scan_types:
+  - connect
+orb_discovery_skip_host: true
+orb_discovery_fast_mode: false

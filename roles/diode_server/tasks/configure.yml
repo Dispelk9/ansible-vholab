@@ -1,0 +1,38 @@
+---
+- name: Stat existing Diode server .env
+  ansible.builtin.stat:
+    path: "{{ diode_dir }}/.env"
+  register: _diode_env_stat
+
+- name: Back up existing Diode server .env before replacing it
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ diode_dir }}/.env"
+    dest: "{{ netbox_backup_dir }}/diode.env.{{ netbox_backup_timestamp }}.bak"
+    mode: "0600"
+  when: _diode_env_stat.stat.exists
+
+- name: Template Diode server .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ diode_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Ship .env.example for reference (no real secrets)
+  ansible.builtin.template:
+    src: env.example.j2
+    dest: "{{ diode_dir }}/.env.example"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Template docker-compose.override.yml (network + port publish only)
+  ansible.builtin.template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ diode_dir }}/docker-compose.override.yml"
+    owner: root
+    group: root
+    mode: "0644"

@@ -1,0 +1,27 @@
+# Copy this file to host_vars/vhohetzner1/vault.yml, fill in real values,
+# then encrypt it:
+#
+#   cp host_vars/vhohetzner1/vault.yml.example host_vars/vhohetzner1/vault.yml
+#   ansible-vault encrypt host_vars/vhohetzner1/vault.yml
+#
+# Generate strong random values with: openssl rand -base64 32
+#
+# NEVER commit an unencrypted vault.yml. Existing precedent in this repo
+# (host_vars/otrs-p/vault.yml) commits the ENCRYPTED file - follow the same
+# pattern here, unlike netbox_superuser_password in group_vars/vhodockers.yml
+# which is currently plaintext (pre-existing, unrelated to this change - flag
+# it for cleanup separately if you want).
+
+# --- Diode server's own internal state stores (independent of NetBox's own DB/redis) ---
+diode_redis_password: "CHANGE-ME"
+diode_postgres_password: "CHANGE-ME"
+
+# --- OAuth2 client secrets Diode's auth-bootstrap container provisions on first start ---
+# Reconciler -> NetBox plugin API
+diode_to_netbox_client_secret: "CHANGE-ME"
+# NetBox plugin -> Diode ingester (also mounted into NetBox as a Docker
+# secret - see roles/netbox_diode_plugin/tasks/secrets.yml)
+netbox_to_diode_client_secret: "CHANGE-ME"
+
+# --- Orb Agent -> Diode ingester (only used once orb_dry_run: false) ---
+orb_diode_client_secret: "CHANGE-ME"

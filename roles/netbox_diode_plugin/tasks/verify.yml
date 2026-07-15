@@ -1,0 +1,17 @@
+---
+- name: Verify the Diode plugin is actually loaded, post-rebuild
+  ansible.builtin.command: >
+    docker compose exec -T netbox
+    python3 -c "import json,urllib.request; print(json.load(urllib.request.urlopen('http://localhost:8080/api/status/'))['plugins'])"
+  args:
+    chdir: "{{ netbox_docker_dir }}"
+  changed_when: false
+  register: _netbox_plugins
+
+- name: Assert netbox_diode_plugin is present in the running instance
+  ansible.builtin.assert:
+    that: "'{{ diode_plugin_module_name }}' in _netbox_plugins.stdout"
+    fail_msg: >-
+      {{ diode_plugin_module_name }} was not reported by /api/status/ after
+      the rebuild: {{ _netbox_plugins.stdout }}
+    success_msg: "Diode plugin confirmed loaded: {{ _netbox_plugins.stdout }}"

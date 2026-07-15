@@ -1,0 +1,18 @@
+# Managed by ansible-vholab (netbox_diode_plugin role). Appends to (never
+# replaces) the PLUGINS / PLUGINS_CONFIG already defined earlier in this
+# file, so any other plugins configured here by hand are left untouched.
+#
+# netbox_to_diode_client_secret is deliberately NOT set here. The plugin's
+# own documented default is to read it from a Docker secret file at
+# /run/secrets/netbox_to_diode (secrets_path + netbox_to_diode_client_secret_name
+# defaults) - see tasks/secrets.yml and docker-compose.diode.yml.j2. This
+# keeps the shared secret out of configuration/plugins.py entirely.
+if "{{ diode_plugin_module_name }}" not in PLUGINS:
+    PLUGINS.append("{{ diode_plugin_module_name }}")
+
+PLUGINS_CONFIG.setdefault("{{ diode_plugin_module_name }}", {})
+PLUGINS_CONFIG["{{ diode_plugin_module_name }}"].update({
+    "diode_target_override": "{{ diode_plugin_diode_target }}",
+    "diode_username": "{{ diode_plugin_username }}",
+    "netbox_to_diode_client_id": "{{ netbox_to_diode_client_id }}",
+})

@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: orb_agent
+  description: "Deploys NetBoxLabs' Orb Agent (network discovery -> Diode) as an independent compose project"
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "22.04"
+dependencies: []

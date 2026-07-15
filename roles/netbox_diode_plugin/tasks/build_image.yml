@@ -1,0 +1,59 @@
+---
+- name: Ensure the Diode custom-image build directory exists
+  ansible.builtin.file:
+    path: "{{ netbox_diode_build_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Template the Dockerfile
+  ansible.builtin.template:
+    src: Dockerfile.j2
+    dest: "{{ netbox_diode_build_dir }}/Dockerfile"
+    owner: root
+    group: root
+    mode: "0644"
+  register: _dockerfile_result
+
+- name: Template plugin_requirements.txt
+  ansible.builtin.template:
+    src: plugin_requirements.txt.j2
+    dest: "{{ netbox_diode_build_dir }}/plugin_requirements.txt"
+    owner: root
+    group: root
+    mode: "0644"
+  register: _requirements_result
+
+- name: Check whether the target custom image tag already exists locally
+  ansible.builtin.command: >
+    docker image inspect {{ netbox_diode_custom_image_name }}:{{ netbox_diode_custom_image_tag }}
+  changed_when: false
+  failed_when: false
+  register: _image_inspect
+
+- name: Decide whether a rebuild is required
+  ansible.builtin.set_fact:
+    netbox_diode_rebuild_required: >-
+      {{
+        netbox_diode_force_rebuild
+        or _image_inspect.rc != 0
+        or _dockerfile_result.changed
+        or _requirements_result.changed
+      }}
+
+- name: Build the custom NetBox + Diode plugin image
+  ansible.builtin.command: >
+    docker build
+    -t {{ netbox_diode_custom_image_name }}:{{ netbox_diode_custom_image_tag }}
+    {{ netbox_diode_build_dir }}
+  when: netbox_diode_rebuild_required
+  register: _docker_build
+
+- name: Report image build decision
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Rebuilt ' + netbox_diode_custom_image_name + ':' + netbox_diode_custom_image_tag
+         + ' from ' + netbox_upstream_image
+         if netbox_diode_rebuild_required
+         else 'Reusing existing image ' + netbox_diode_custom_image_name + ':' + netbox_diode_custom_image_tag + ' (no changes detected).' }}

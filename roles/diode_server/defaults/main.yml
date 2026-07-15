@@ -1,0 +1,80 @@
+---
+# netbox_install_dir must match roles/netbox/defaults/main.yml's value (this
+# repo's own netbox role deployed netbox-docker there - /opt/netbox by
+# default). Kept here too since diode_server and netbox role are never in
+# the same play together (separate playbooks), so role-default cross-talk
+# can't be relied on.
+netbox_install_dir: /opt/netbox
+netbox_docker_dir: "{{ netbox_install_dir }}/netbox-docker"
+# docker-compose infers the project name from the directory basename
+# ("netbox-docker") unless COMPOSE_PROJECT_NAME/-p override it - confirmed
+# against the live host's container names (netbox-docker-netbox-1 etc.).
+netbox_compose_project_name: netbox-docker
+
+diode_dir: "{{ netbox_install_dir }}/discovery/diode"
+diode_compose_project_name: diode
+docker_discovery_network_name: netbox_discovery_net
+
+# Minimum free space (GB) required on / before pulling any new images.
+# The live host was observed at 87.1% of 37.23GB used (~4.8GB free) - this
+# is a real, tight constraint, not a generic default. See preflight.yml.
+discovery_min_free_gb: 3
+
+# The Diode server ships from a monorepo (github.com/netboxlabs/diode,
+# diode-server/ subdir) as a multi-service Compose stack (nginx front door,
+# ingester, reconciler, auth [Ory Hydra + a bootstrap client-provisioning
+# container], redis, postgres) - there is no single "diode-server" image to
+# hand-author a minimal compose.yml around. Rather than re-implement that
+# fairly complex, fast-changing stack ourselves (and risk getting the
+# service wiring subtly wrong), we fetch the official, versioned compose
+# file as a pinned release artifact and layer our own override on top - same
+# pattern as `helm fetch` or grabbing a GitHub release asset. We never clone
+# the netboxlabs/diode repo or edit the fetched file in place.
+#
+# "release" tracks the latest tagged release (the same ref the project's own
+# quickstart.sh script uses). Pin this to an exact tag (e.g. "v2.1.0") once
+# you've validated a specific version, for fully reproducible deploys.
+diode_server_compose_ref: "release"
+diode_server_compose_url: >-
+  https://raw.githubusercontent.com/netboxlabs/diode/{{ diode_server_compose_ref }}/diode-server/docker/docker-compose.yaml
+
+# Where the Diode server's client-facing gRPC endpoint (fronted by nginx)
+# listens. Internal container port is stable at 8080 per upstream; the host
+# bind is only needed so Orb Agent (which runs with network_mode: host) and
+# any external Diode Agents can reach it.
+#
+# NOT 8080/8081: the live host already has app-backend-1 on
+# 0.0.0.0:8080->8080/tcp and app-frontend-1 on 0.0.0.0:8081->80/tcp (from
+# `docker ps -a`) - binding Diode's nginx there too would fail with
+# "address already in use". 8180 was confirmed free against every
+# host-published port seen (8080, 8081, 8082, 8083, 8084, 8443, 3000, 9090
+# taken; 80/443 used by the host-level nginx). Re-check with
+# `ss -tlnp | grep 8180` before first deploy in case something changed.
+diode_nginx_internal_port: 8080
+diode_nginx_bind_ip: "127.0.0.1"
+diode_nginx_bind_port: 8180
+
+# Fallback service key if we can't detect the nginx front-door service by
+# introspecting the fetched compose file (see tasks/detect_frontend.yml).
+# Research against the upstream compose file names it "ingress-nginx".
+diode_frontend_service_fallback: "ingress-nginx"
+
+# Postgres + Redis credentials for Diode's own internal state (distinct from
+# NetBox's own postgres/redis - a fully separate Compose project).
+# Passwords (diode_redis_password, diode_postgres_password) live in
+# host_vars/vhohetzner1/vault.yml (ansible-vault encrypted).
+diode_postgres_db: diode
+diode_postgres_user: diode
+
+# OAuth2 client IDs bootstrap-provisions on first start (secrets in vault).
+diode_to_netbox_client_id: "diode-to-netbox"
+netbox_to_diode_client_id: "netbox-to-diode"
+
+# NetBox side, so the reconciler can call back into NetBox's API.
+netbox_diode_plugin_api_base_url: "http://netbox:8080/"
+netbox_diode_plugin_skip_tls_verify: true
+
+diode_health_retries: 20
+diode_health_delay: 5
+
+netbox_backup_dir: "{{ netbox_install_dir }}/backups"

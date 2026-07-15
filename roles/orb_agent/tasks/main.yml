@@ -1,0 +1,92 @@
+---
+- name: Refuse to go live with the placeholder (non-routable) discovery target
+  ansible.builtin.assert:
+    that: "'192.0.2.0/24' not in orb_discovery_targets or orb_dry_run"
+    fail_msg: >-
+      orb_discovery_targets is still the RFC 5737 placeholder (192.0.2.0/24)
+      and orb_dry_run is false - this would try to scan a non-routable test
+      network for real. Set orb_discovery_targets to your actual, permitted
+      scan range in group_vars/vhodockers.yml before going live.
+
+- name: Ensure Orb Agent directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - "{{ orb_dir }}"
+    - "{{ orb_dir }}/data"
+
+- name: Template Orb Agent .env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ orb_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Ship .env.example for reference
+  ansible.builtin.template:
+    src: env.example.j2
+    dest: "{{ orb_dir }}/.env.example"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Template Orb Agent agent.yaml
+  ansible.builtin.template:
+    src: agent.yaml.j2
+    dest: "{{ orb_dir }}/agent.yaml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Template Orb Agent compose.yml
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ orb_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Validate the Orb Agent compose file
+  ansible.builtin.command: docker compose config -q
+  args:
+    chdir: "{{ orb_dir }}"
+  changed_when: false
+
+- name: Pull Orb Agent image
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: "{{ orb_dir }}"
+  register: _orb_pull
+  changed_when: "'Pulled' in _orb_pull.stdout or 'Downloaded newer image' in _orb_pull.stdout"
+
+- name: Start the Orb Agent
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ orb_dir }}"
+  register: _orb_up
+  changed_when: "'Created' in _orb_up.stderr or 'Started' in _orb_up.stderr or 'Recreated' in _orb_up.stderr"
+
+- name: Confirm the Orb Agent container is running
+  ansible.builtin.command: docker compose ps -q orb-agent
+  args:
+    chdir: "{{ orb_dir }}"
+  changed_when: false
+  register: _orb_container_id
+  until: _orb_container_id.stdout | trim | length > 0
+  retries: "{{ orb_health_retries }}"
+  delay: "{{ orb_health_delay }}"
+
+- name: Report current dry-run mode
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Orb Agent is in dry-run mode - discovered inventory is written as JSON to '
+         + orb_dir + '/data/dry-run on the target host, nothing is sent to Diode.'
+         if orb_dry_run else
+         'Orb Agent is sending discovered inventory to the Diode server at '
+         + diode_nginx_bind_ip + ':' + (diode_nginx_bind_port | string) + '.' }}

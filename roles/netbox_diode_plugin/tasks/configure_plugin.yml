@@ -1,0 +1,40 @@
+---
+# configuration/plugins.py is netbox-docker's own designated, tracked
+# extension point for plugin configuration (unlike env/netbox.env, which is
+# generated secrets and must never be touched). We back it up, then append
+# an idempotent, clearly-marked block rather than templating the whole file,
+# so any other plugins already configured there are left alone.
+
+- name: Stat configuration/plugins.py
+  ansible.builtin.stat:
+    path: "{{ netbox_docker_dir }}/configuration/plugins.py"
+  register: _plugins_py_stat
+
+- name: Fail if configuration/plugins.py is missing
+  ansible.builtin.assert:
+    that: _plugins_py_stat.stat.exists
+    fail_msg: >-
+      {{ netbox_docker_dir }}/configuration/plugins.py not found. netbox-docker
+      ships this file so PLUGINS/PLUGINS_CONFIG can be customized without
+      touching the rest of configuration/ - restore it from the netbox-docker
+      checkout before continuing.
+
+- name: Back up configuration/plugins.py before editing
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ netbox_docker_dir }}/configuration/plugins.py"
+    dest: "{{ netbox_backup_dir }}/plugins.py.{{ netbox_backup_timestamp }}.bak"
+    mode: preserve
+
+# Assumes PLUGINS = [] and PLUGINS_CONFIG = {} are already defined earlier
+# in the file, as shipped by stock netbox-docker. If you started from a
+# stripped-down configuration/plugins.py that doesn't define them, add
+# those two lines near the top before re-running.
+- name: Add the managed Diode plugin block to configuration/plugins.py
+  ansible.builtin.blockinfile:
+    path: "{{ netbox_docker_dir }}/configuration/plugins.py"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - netbox_diode_plugin"
+    block: "{{ lookup('template', 'plugins_block.py.j2') }}"
+    insertafter: EOF
+  register: _plugins_py_updated
+  no_log: true

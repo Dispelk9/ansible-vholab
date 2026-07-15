@@ -1,0 +1,80 @@
+---
+netbox_install_dir: /opt/netbox
+netbox_docker_dir: "{{ netbox_install_dir }}/netbox-docker"
+netbox_compose_project_name: netbox-docker
+netbox_backup_dir: "{{ netbox_install_dir }}/backups"
+
+# Set this only if you need to force a specific base image instead of
+# auto-detecting the one currently running (see tasks/prep.yml). Left unset
+# by default because roles/netbox/tasks/main.yml (this repo's own NetBox
+# role) tracks netbox-docker's floating "release" branch rather than a
+# pinned image tag, so there's no single static default that stays correct
+# over time - the exact running image is queried live via `docker inspect`
+# instead.
+netbox_upstream_image_override: ""
+
+netbox_diode_build_dir: "{{ netbox_install_dir }}/discovery/netbox-diode-build"
+netbox_diode_custom_image_name: "netbox-diode-custom"
+# Tag includes the plugin version so rollbacks/upgrades never collide with a
+# previously-built image, and the running upstream image's own tag suffix so
+# it's traceable to what it was built from.
+netbox_diode_custom_image_tag: "diode-{{ diode_plugin_version }}"
+netbox_diode_force_rebuild: false
+
+# Services in the upstream docker-compose.yml that run the NetBox
+# application image and therefore need the custom (plugin-bearing) image.
+# These are netbox-docker's own standard, stable service names.
+#
+# NOTE: `docker ps -a` on the live host shows no netbox-housekeeping
+# container at all (only netbox and netbox-worker are running). Rather than
+# assume it's misconfigured or blindly start it, tasks/detect_services.yml
+# intersects this list against what's actually running
+# (netbox_running_services, set in tasks/prep.yml) and only recreates
+# services that already exist - see that file for details. This full list is
+# kept as the aspirational/stock default; the effective list used at
+# runtime is netbox_diode_app_services_effective.
+netbox_diode_app_services:
+  - netbox
+  - netbox-worker
+  - netbox-housekeeping
+
+# --- NetBox Diode plugin (github.com/netboxlabs/diode-netbox-plugin) ---
+diode_plugin_pip_package: "netboxlabs-diode-netbox-plugin"
+# Deliberately not pinned to the newest release (1.14.0 as of this writing):
+# https://github.com/netboxlabs/diode-netbox-plugin/issues/186 reports a
+# migration failure on NetBox 4.5.10 + plugin 1.14.0 - a pairing this
+# environment (NetBox core 4.5.x per the live container) could plausibly
+# hit. Re-check that issue before bumping past 1.12.0.
+diode_plugin_version: "1.12.0"
+diode_plugin_module_name: "netbox_diode_plugin"
+
+# Enforced by the plugin itself (PluginConfig.min_version/max_version) - used
+# by version_gate.yml to fail fast, with a clear message, before touching
+# anything, rather than letting a silent plugin load failure surface later.
+diode_plugin_min_netbox_version: "4.4.10"
+diode_plugin_max_netbox_version: "4.6.99"
+
+# How the plugin is pip-installed inside the custom image. netbox-docker's
+# own images have moved between plain pip and `uv` across versions - verify
+# this against the base image tag actually detected at build time (see
+# tasks/prep.yml) and adjust if the build fails with "pip: not found" or similar.
+netbox_diode_pip_install_cmd: "/opt/netbox/venv/bin/pip install --no-cache-dir -r /opt/netbox/plugin_requirements.txt"
+
+# PLUGINS_CONFIG["netbox_diode_plugin"] values. Use grpc:// for plaintext
+# (fine on the internal docker_discovery_network_name bridge network) or
+# grpcs:// if you terminate TLS in front of Diode. diode_frontend_service is
+# a fact set by the diode_server role (which must run before this one in
+# the play - netbox_discovery_deploy.yml already orders it that way) from
+# introspecting Diode's actual compose file.
+diode_plugin_diode_target: "grpc://{{ diode_frontend_service | default('ingress-nginx') }}:8080/diode"
+diode_plugin_username: "diode"
+# netbox_to_diode_client_secret is deliberately NOT set here - it's supplied
+# via a Docker secret file (the plugin's own documented default mechanism)
+# so the secret never has to live inside configuration/plugins.py. See
+# tasks/secrets.yml.
+netbox_to_diode_client_id: "netbox-to-diode"
+
+docker_discovery_network_name: netbox_discovery_net
+
+netbox_health_retries: 30
+netbox_health_delay: 10

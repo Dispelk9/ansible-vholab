@@ -1,0 +1,77 @@
+---
+# This repo has no separate "detect existing install" role (unlike a
+# from-scratch adoption scenario) - the netbox role in this same repo is
+# what deployed the live instance, so we know the paths already. What we
+# still need, gathered live rather than assumed, is: which services are
+# actually running right now (see README - netbox-housekeeping is notably
+# absent), and the exact image reference NetBox is currently running (since
+# roles/netbox/tasks/main.yml tracks netbox-docker's floating "release"
+# branch, not a pinned tag - a static default here would drift out of sync
+# over time).
+
+- name: Assert netbox-docker directory exists
+  ansible.builtin.stat:
+    path: "{{ netbox_docker_dir }}"
+  register: _netbox_dir_stat
+
+- name: Fail if netbox-docker directory is missing
+  ansible.builtin.assert:
+    that: _netbox_dir_stat.stat.isdir | default(false)
+    fail_msg: >-
+      {{ netbox_docker_dir }} does not exist. Run netbox_deploy.yml (the
+      existing netbox role) first, or fix netbox_install_dir if this host's
+      layout differs from the default.
+
+- name: Ensure backup directory exists
+  ansible.builtin.file:
+    path: "{{ netbox_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Record backup timestamp
+  ansible.builtin.set_fact:
+    netbox_backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+
+- name: List running containers for the netbox-docker project
+  ansible.builtin.command: docker compose ps --format json
+  args:
+    chdir: "{{ netbox_docker_dir }}"
+  changed_when: false
+  register: _netbox_compose_ps
+
+- name: Parse running container list
+  ansible.builtin.set_fact:
+    # `docker compose ps --format json` emits one JSON object per line on
+    # recent versions, or a single JSON array on older ones - handle both.
+    netbox_running_services: >-
+      {{
+        (_netbox_compose_ps.stdout | trim | first == '[')
+        | ternary(_netbox_compose_ps.stdout | from_json,
+                  (_netbox_compose_ps.stdout | trim).splitlines() | map('from_json') | list)
+      }}
+
+- name: Fail if the core netbox container isn't running at all
+  ansible.builtin.assert:
+    that: "'netbox' in (netbox_running_services | map(attribute='Service') | list)"
+    fail_msg: >-
+      No running 'netbox' service found in {{ netbox_docker_dir }}. Run
+      netbox_deploy.yml first, or check `docker compose ps` on the host.
+
+- name: Detect the exact image reference NetBox is currently running
+  ansible.builtin.command: >
+    docker inspect --format {% raw %}'{{.Config.Image}}'{% endraw %}
+    {{ netbox_compose_project_name }}-netbox-1
+  changed_when: false
+  register: _netbox_running_image
+
+- name: Set fact with the detected (or overridden) upstream image reference
+  ansible.builtin.set_fact:
+    netbox_upstream_image: "{{ netbox_upstream_image_override | default(_netbox_running_image.stdout | trim, true) }}"
+
+- name: Report detected upstream image and running services
+  ansible.builtin.debug:
+    msg: >-
+      NetBox is currently running {{ netbox_upstream_image }} with services:
+      {{ netbox_running_services | map(attribute='Service') | list }}

@@ -1,0 +1,43 @@
+---
+- name: Ensure Diode server directory exists
+  ansible.builtin.file:
+    path: "{{ diode_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Ensure backup directory exists
+  ansible.builtin.file:
+    path: "{{ netbox_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Record backup timestamp
+  ansible.builtin.set_fact:
+    netbox_backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+
+- name: Stat the existing fetched docker-compose.yaml (if any)
+  ansible.builtin.stat:
+    path: "{{ diode_dir }}/docker-compose.yaml"
+  register: _diode_compose_stat
+
+- name: Back up the previously-fetched docker-compose.yaml before replacing it
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ diode_dir }}/docker-compose.yaml"
+    dest: "{{ netbox_backup_dir }}/diode-docker-compose.yaml.{{ netbox_backup_timestamp }}.bak"
+    mode: preserve
+  when: _diode_compose_stat.stat.exists
+
+- name: Fetch the official, versioned Diode server compose file (never modified upstream)
+  ansible.builtin.get_url:
+    url: "{{ diode_server_compose_url }}"
+    dest: "{{ diode_dir }}/docker-compose.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  register: _diode_compose_fetch

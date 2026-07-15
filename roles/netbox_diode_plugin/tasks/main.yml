@@ -1,0 +1,27 @@
+---
+- name: Detect running netbox-docker services, image and take safety backups
+  ansible.builtin.import_tasks: prep.yml
+
+- name: Gate on NetBox core version compatibility with the pinned plugin version
+  ansible.builtin.import_tasks: version_gate.yml
+
+- name: Detect which Diode-relevant app services are actually running
+  ansible.builtin.import_tasks: detect_services.yml
+
+- name: Build (or reuse) the custom NetBox + Diode plugin image
+  ansible.builtin.import_tasks: build_image.yml
+
+- name: Provision the netbox_to_diode client secret as a Docker secret
+  ansible.builtin.import_tasks: secrets.yml
+
+- name: Configure the plugin in configuration/plugins.py
+  ansible.builtin.import_tasks: configure_plugin.yml
+
+- name: Add the extra compose file and point COMPOSE_FILE at it
+  ansible.builtin.import_tasks: compose_override.yml
+
+- name: Recreate NetBox app services and confirm health
+  ansible.builtin.import_tasks: deploy.yml
+
+- name: Verify the plugin actually loaded
+  ansible.builtin.import_tasks: verify.yml

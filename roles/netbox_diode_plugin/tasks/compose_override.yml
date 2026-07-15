@@ -1,0 +1,48 @@
+---
+# Adds an EXTRA compose file (docker-compose.diode.yml) alongside the
+# existing docker-compose.yml / docker-compose.override.yml (the one the
+# netbox role itself writes), and points `docker compose` at all three via
+# the project's root .env file (COMPOSE_FILE=...). The netbox role's own
+# docker-compose.override.yml is never touched.
+
+- name: Template docker-compose.diode.yml
+  ansible.builtin.template:
+    src: docker-compose.diode.yml.j2
+    dest: "{{ netbox_docker_dir }}/docker-compose.diode.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: _diode_compose_file
+
+- name: Validate the combined compose file set (syntax only, no changes)
+  ansible.builtin.command: >
+    docker compose
+    -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.diode.yml
+    config -q
+  args:
+    chdir: "{{ netbox_docker_dir }}"
+  changed_when: false
+
+- name: Stat the netbox-docker project .env file (compose CLI variable file, not env/netbox.env)
+  ansible.builtin.stat:
+    path: "{{ netbox_docker_dir }}/.env"
+  register: _project_env_stat
+
+- name: Back up the existing project .env before editing
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ netbox_docker_dir }}/.env"
+    dest: "{{ netbox_backup_dir }}/netbox-docker.env.{{ netbox_backup_timestamp }}.bak"
+    mode: preserve
+  when: _project_env_stat.stat.exists
+
+- name: Point docker compose at all three compose files by default
+  ansible.builtin.lineinfile:
+    path: "{{ netbox_docker_dir }}/.env"
+    regexp: "^COMPOSE_FILE="
+    line: "COMPOSE_FILE=docker-compose.yml:docker-compose.override.yml:docker-compose.diode.yml"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  register: _compose_file_env_updated

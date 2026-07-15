@@ -1,0 +1,35 @@
+---
+# Don't blindly assume every service in netbox_diode_app_services actually
+# exists on this install. The live host shows only netbox and netbox-worker
+# running (no netbox-housekeeping container at all in `docker ps -a`) - it
+# may not be defined in this install's docker-compose.yml (netbox-docker's
+# "release" branch checkout), or it may be intentionally stopped/never
+# started. Either way, silently running
+# `docker compose up -d ... netbox-housekeeping` could create/start a
+# container nobody asked for.
+#
+# netbox_running_services is set by tasks/prep.yml.
+
+- name: Compute the set of Diode-relevant app services that are actually running
+  ansible.builtin.set_fact:
+    netbox_diode_app_services_effective: >-
+      {{
+        netbox_diode_app_services
+        | intersect(netbox_running_services | map(attribute='Service') | list)
+      }}
+
+- name: Warn about expected services that are not currently running
+  ansible.builtin.debug:
+    msg: >-
+      {{ item }} is listed in netbox_diode_app_services but is not currently
+      running on this host, so it will NOT be recreated with the custom
+      Diode-plugin image. If you rely on it (e.g. netbox-housekeeping's
+      periodic cleanup jobs) and start it manually later, it will come up on
+      the plain upstream image without the Diode plugin loaded - either
+      define/start it before re-running with --tags diode_plugin, or ignore
+      this if you deliberately don't run that service.
+  loop: "{{ netbox_diode_app_services | difference(netbox_diode_app_services_effective) }}"
+
+- name: Report the effective service list that will be rebuilt/recreated
+  ansible.builtin.debug:
+    msg: "Diode-plugin image will be applied to: {{ netbox_diode_app_services_effective }}"

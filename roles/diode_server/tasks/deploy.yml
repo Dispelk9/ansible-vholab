@@ -1,0 +1,63 @@
+---
+- name: Validate the Diode server compose file set
+  ansible.builtin.command: docker compose config -q
+  args:
+    chdir: "{{ diode_dir }}"
+  changed_when: false
+
+- name: Pull Diode server images
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: "{{ diode_dir }}"
+  register: _diode_pull
+  changed_when: "'Pulled' in _diode_pull.stdout or 'Downloaded newer image' in _diode_pull.stdout"
+
+- name: Start the Diode server stack
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ diode_dir }}"
+  register: _diode_up
+  changed_when: "'Created' in _diode_up.stderr or 'Started' in _diode_up.stderr or 'Recreated' in _diode_up.stderr"
+
+- name: Confirm all Diode server containers are running
+  ansible.builtin.command: docker compose ps --format json
+  args:
+    chdir: "{{ diode_dir }}"
+  changed_when: false
+  register: _diode_ps
+
+- name: Parse container states
+  ansible.builtin.set_fact:
+    _diode_containers: >-
+      {{
+        (_diode_ps.stdout | trim | first == '[')
+        | ternary(_diode_ps.stdout | from_json,
+                  (_diode_ps.stdout | trim).splitlines() | map('from_json') | list)
+      }}
+
+- name: Fail if any Diode server container is not running
+  ansible.builtin.assert:
+    that: >-
+      _diode_containers
+      | rejectattr('State', 'equalto', 'running')
+      | list | length == 0
+    fail_msg: >-
+      Not all Diode server containers are running:
+      {{ _diode_containers | rejectattr('State', 'equalto', 'running') | map(attribute='Service') | list }}
+
+- name: Wait for the Diode client-facing gRPC endpoint to accept connections
+  ansible.builtin.wait_for:
+    host: "{{ diode_nginx_bind_ip }}"
+    port: "{{ diode_nginx_bind_port }}"
+    timeout: "{{ diode_health_retries | int * diode_health_delay | int }}"
+
+- name: Check Postgres's own healthcheck status (the one service upstream defines a HEALTHCHECK for)
+  ansible.builtin.command: docker compose ps --format json postgres
+  args:
+    chdir: "{{ diode_dir }}"
+  changed_when: false
+  register: _diode_pg_ps
+
+- name: Report Postgres health
+  ansible.builtin.debug:
+    msg: "Diode postgres health: {{ (_diode_pg_ps.stdout | from_json).Health | default('unknown') }}"

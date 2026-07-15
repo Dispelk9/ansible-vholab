@@ -1,0 +1,45 @@
+---
+- name: Recreate NetBox app services with the custom image
+  ansible.builtin.command: docker compose up -d {{ netbox_diode_app_services_effective | join(' ') }}
+  args:
+    chdir: "{{ netbox_docker_dir }}"
+  register: _diode_deploy_up
+  changed_when: "'Created' in _diode_deploy_up.stderr or 'Started' in _diode_deploy_up.stderr or 'Recreated' in _diode_deploy_up.stderr"
+
+- name: "Get container id for service: netbox"
+  ansible.builtin.command: docker compose ps -q netbox
+  args:
+    chdir: "{{ netbox_docker_dir }}"
+  changed_when: false
+  register: _health_container_id
+
+- name: Fail if the netbox container is not running at all
+  ansible.builtin.assert:
+    that: _health_container_id.stdout | trim | length > 0
+    fail_msg: "No running container found for service netbox in {{ netbox_docker_dir }}."
+
+- name: Wait for netbox to report healthy again
+  ansible.builtin.command: >
+    docker inspect --format {% raw %}'{{.State.Health.Status}}'{% endraw %}
+    {{ _health_container_id.stdout | trim }}
+  changed_when: false
+  register: _health_status
+  until: _health_status.stdout | trim == 'healthy'
+  retries: "{{ netbox_health_retries }}"
+  delay: "{{ netbox_health_delay }}"
+
+- name: Confirm the netbox container joined the shared discovery network
+  ansible.builtin.command: >
+    docker inspect --format {% raw %}'{{json .NetworkSettings.Networks}}'{% endraw %}
+    {{ netbox_compose_project_name }}-netbox-1
+  changed_when: false
+  failed_when: false
+  register: _netbox_networks_inspect
+
+- name: Assert the discovery network is attached to netbox
+  ansible.builtin.assert:
+    that: docker_discovery_network_name in (_netbox_networks_inspect.stdout | default('') | from_json | default({}, true))
+    fail_msg: >-
+      The netbox container is not attached to {{ docker_discovery_network_name }}.
+      Check docker-compose.diode.yml and re-run with --tags diode_plugin.
+  when: _netbox_networks_inspect.rc == 0

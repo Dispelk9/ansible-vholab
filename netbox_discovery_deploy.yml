@@ -1,0 +1,51 @@
+---
+# Deploys the Diode server, the NetBox Diode plugin and Orb Agent around the
+# existing NetBox install that netbox_deploy.yml (the "netbox" role) already
+# manages on vhodockers. Never reinstalls or rewrites that install itself -
+# only detects its current state (running services, running image) and
+# layers Diode/Orb around it.
+#
+# Usage:
+#   ansible-playbook -i inventory netbox_discovery_deploy.yml --ask-vault-pass
+#
+# Useful tags:
+#   --tags diode_server   only deploy/update the Diode server
+#   --tags diode_plugin   only (re)build/deploy the NetBox Diode plugin
+#   --tags orb_agent      only deploy/update Orb Agent
+#   --skip-tags orb_agent deploy everything except Orb
+#
+# Order matters: diode_server runs before netbox_diode_plugin because the
+# plugin needs to know the real service name Diode's front door ends up with
+# (detected at runtime, not guessed - see
+# roles/diode_server/tasks/detect_frontend.yml), and it creates the shared
+# Docker network the plugin's compose overlay attaches NetBox to.
+
+- name: Install Diode + Orb Agent discovery stack around the existing NetBox install
+  hosts: vhodockers
+  become: true
+
+  pre_tasks:
+    - name: Assert required vault secrets are present
+      ansible.builtin.assert:
+        that:
+          - diode_redis_password is defined
+          - diode_postgres_password is defined
+          - diode_to_netbox_client_secret is defined
+          - netbox_to_diode_client_secret is defined
+          - orb_diode_client_secret is defined
+        fail_msg: >-
+          Vault secrets are missing. Copy
+          host_vars/vhohetzner1/vault.yml.example to
+          host_vars/vhohetzner1/vault.yml, fill it in, and encrypt it with
+          `ansible-vault encrypt host_vars/vhohetzner1/vault.yml`.
+      tags: always
+
+  roles:
+    - role: diode_server
+      tags: [diode_server]
+
+    - role: netbox_diode_plugin
+      tags: [netbox_diode_plugin, diode_plugin]
+
+    - role: orb_agent
+      tags: [orb_agent]

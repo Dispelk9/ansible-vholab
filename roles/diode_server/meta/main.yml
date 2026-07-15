@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: diode_server
+  description: "Deploys NetBoxLabs' Diode server (fetched official compose) alongside the existing netbox role's install"
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "22.04"
+dependencies: []

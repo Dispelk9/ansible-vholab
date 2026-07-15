@@ -1,0 +1,15 @@
+---
+- name: Pre-flight checks (disk space, shared Docker network)
+  ansible.builtin.import_tasks: preflight.yml
+
+- name: Fetch the pinned, official Diode server compose file
+  ansible.builtin.import_tasks: fetch_compose.yml
+
+- name: Detect the nginx front-door service name
+  ansible.builtin.import_tasks: detect_frontend.yml
+
+- name: Render .env / .env.example / override
+  ansible.builtin.import_tasks: configure.yml
+
+- name: Validate, pull, start and health-gate the Diode server stack
+  ansible.builtin.import_tasks: deploy.yml

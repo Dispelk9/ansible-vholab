@@ -1,0 +1,38 @@
+---
+# Rather than hardcode a guessed service key for the nginx front door (the
+# upstream compose file's exact service names aren't part of any stable,
+# documented contract), parse the file we just fetched and find it for real.
+# This also makes the role resilient to upstream renaming services.
+
+- name: Read the fetched Diode server compose file
+  ansible.builtin.slurp:
+    src: "{{ diode_dir }}/docker-compose.yaml"
+  register: _diode_compose_raw
+
+- name: Parse it and locate the nginx front-door service
+  ansible.builtin.set_fact:
+    diode_frontend_service: >-
+      {{
+        (
+          (_diode_compose_raw.content | b64decode | from_yaml).services
+          | dict2items
+          | selectattr('value.image', 'defined')
+          | selectattr('value.image', 'search', 'nginx')
+          | map(attribute='key')
+          | list
+          | first
+        ) | default(diode_frontend_service_fallback, true)
+      }}
+
+- name: Warn if the nginx front-door service couldn't be detected
+  ansible.builtin.debug:
+    msg: >-
+      Could not detect an nginx-image service in {{ diode_dir }}/docker-compose.yaml;
+      falling back to '{{ diode_frontend_service_fallback }}'. Check
+      docker-compose.yaml manually and set diode_frontend_service_fallback
+      if that's wrong.
+  when: diode_frontend_service == diode_frontend_service_fallback
+
+- name: Report detected Diode front-door service
+  ansible.builtin.debug:
+    msg: "Diode client-facing gRPC endpoint is fronted by service: {{ diode_frontend_service }}"

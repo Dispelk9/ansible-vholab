@@ -1,0 +1,35 @@
+---
+# Real, observed constraint, not a generic default: the live host's root
+# filesystem was seen at 87.1% of 37.23GB used (~4.8GB free) via `df`-style
+# output in an interactive session. Pulling the Diode server's multi-service
+# stack (nginx, ingester, reconciler, auth/Hydra, postgres, redis) plus the
+# Orb Agent image adds real disk pressure on top of whatever else is already
+# running on this multi-tenant box (grafana, prometheus, keycloak, checkmk,
+# analytical_tools, etc.) - fail fast with a clear message rather than
+# hitting a mid-pull "no space left on device" on a shared production host.
+
+- name: Check free space on / (ansible_mounts, gathered by default facts)
+  ansible.builtin.set_fact:
+    _root_mount: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | list | first }}"
+
+- name: Assert enough free space is available before pulling any images
+  ansible.builtin.assert:
+    that: (_root_mount.size_available / (1024 * 1024 * 1024)) | round(1) >= discovery_min_free_gb
+    fail_msg: >-
+      Only {{ (_root_mount.size_available / (1024 * 1024 * 1024)) | round(1) }}GB free on /
+      (need >= {{ discovery_min_free_gb }}GB). This host was already observed
+      tight on space (87.1% of 37.23GB used) - free up space (old images:
+      `docker image prune -a`, old logs, etc.) before deploying the Diode
+      server + Orb Agent stack.
+    success_msg: >-
+      {{ (_root_mount.size_available / (1024 * 1024 * 1024)) | round(1) }}GB free on / - proceeding.
+
+- name: Check whether the shared discovery Docker network already exists
+  ansible.builtin.command: "docker network inspect {{ docker_discovery_network_name }}"
+  register: _discovery_net_check
+  changed_when: false
+  failed_when: false
+
+- name: Create the shared discovery Docker network if missing
+  ansible.builtin.command: "docker network create --driver bridge {{ docker_discovery_network_name }}"
+  when: _discovery_net_check.rc != 0
