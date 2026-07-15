@@ -127,6 +127,15 @@ netbox_diode_plugin_skip_tls_verify: true
 diode_health_retries: 20
 diode_health_delay: 5
 
+# Services in the fetched compose file that are one-shot jobs (restart:
+# on-failure, but no long-running process) rather than persistent
+# services - hydra-migrate runs Hydra's SQL migrations once, diode-auth-bootstrap
+# registers OAuth2 clients once. Both are SUPPOSED to exit 0 and stay
+# exited, not show State=running - see tasks/deploy.yml.
+diode_server_oneshot_services:
+  - hydra-migrate
+  - diode-auth-bootstrap
+
 netbox_backup_dir: "{{ netbox_install_dir }}/backups"
 
 # Every run tears down and recreates the Diode server's own containers +

@@ -35,7 +35,13 @@
     state: directory
     owner: root
     group: root
-    mode: "0750"
+    # World-readable/traversable, not 0750: this directory is bind-mounted
+    # (not a Docker secret) into diode-auth-bootstrap, which Dockerfile.auth
+    # runs as a non-root "appuser" - a restrictive mode here means that
+    # user can't even traverse into the directory, which surfaces as
+    # "credentials file ... not found" inside the container even though the
+    # file genuinely exists on the host.
+    mode: "0755"
 
 - name: Stat existing OAuth2 client-credentials.json
   ansible.builtin.stat:
@@ -56,7 +62,12 @@
     dest: "{{ diode_dir }}/oauth2/client/client-credentials.json"
     owner: root
     group: root
-    mode: "0600"
+    # World-readable, not 0600 - same reason as the directory above: this
+    # secret is read by a non-root, unknown-UID container process via bind
+    # mount, so it can't be restricted to root-only. It still lives under
+    # netbox_install_dir (root-owned tree, 0750 diode_dir), so only accounts
+    # that already have shell access to this host can reach it at all.
+    mode: "0644"
   no_log: true
 
 - name: Template docker-compose.override.yml (network + port publish only)

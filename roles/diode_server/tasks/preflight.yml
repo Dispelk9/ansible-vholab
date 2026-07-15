@@ -29,6 +29,14 @@
   register: _discovery_net_check
   changed_when: false
   failed_when: false
+  # Read-only, no side effects - force it to actually run even under
+  # --check, otherwise it's skipped (no .rc on the result) and the next
+  # task's `when: _discovery_net_check.rc != 0` blows up with "'dict
+  # object' has no attribute 'rc'". This is the first of several
+  # command+register+when chains in this role that don't tolerate --check
+  # (deploy.yml's docker compose pull/up/ps steps have the same issue) -
+  # see the README note on why --check isn't a meaningful dry run here.
+  check_mode: false
 
 - name: Create the shared discovery Docker network if missing
   ansible.builtin.command: "docker network create --driver bridge {{ docker_discovery_network_name }}"

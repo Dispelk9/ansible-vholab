@@ -30,8 +30,16 @@ deploys NetBoxLabs Diode server + NetBox Diode plugin + Orb Agent around the
 existing NetBox install on vhodockers (deployed by netbox_deploy.yml /
 roles/netbox). Never touches the netbox role's own files.<br />
 
-    ansible-playbook -i inventory netbox_discovery_deploy.yml --ask-vault-pass --check   # dry run first
     ansible-playbook -i inventory netbox_discovery_deploy.yml --ask-vault-pass
+
+Don't add `--check` (dry run) - this role is almost entirely `command`
+tasks branching on `docker`/`docker compose` output (network checks,
+image pulls, `up`/`ps`, container state parsing), which Ansible can't
+meaningfully simulate. `command` tasks are skipped under `--check` by
+default, which breaks the very first `register`-then-`when` chain in
+`preflight.yml` with `'dict object' has no attribute 'rc'` - and the same
+pattern recurs throughout `deploy.yml`. Use `--tags <role>` to scope a run
+instead if you want a smaller blast radius than the full playbook.
 
 Before first run:
 - `cp host_vars/vhohetzner1/vault.yml.example host_vars/vhohetzner1/vault.yml`,

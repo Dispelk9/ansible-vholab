@@ -27,37 +27,76 @@
   delay: 5
   changed_when: "'Created' in _diode_up.stderr or 'Started' in _diode_up.stderr or 'Recreated' in _diode_up.stderr"
 
-- name: Confirm all Diode server containers are running
+# hydra-migrate and diode-auth-bootstrap are one-shot jobs (restart:
+# on-failure, no long-running process) - they're SUPPOSED to exit 0, not
+# stay "running". Only long-running services are held to the "must be
+# running" bar; one-shot ones are checked for a clean exit instead.
+#
+# Retried as a whole (not just the ps call) because a service can be
+# transiently non-running right after `up -d` returns for legitimate
+# reasons that resolve on their own - e.g. ingress-nginx resolves its
+# upstream hostnames (diode-ingester/diode-reconciler/diode-auth) once at
+# nginx startup; if one of those isn't resolvable yet at that exact moment,
+# nginx exits and restart:on-failure retries it a few seconds later.
+- name: Wait for Diode server containers to reach their expected state
   ansible.builtin.command: docker compose ps --format json
   args:
     chdir: "{{ diode_dir }}"
   changed_when: false
   register: _diode_ps
+  # docker compose ps --format json isn't consistent across versions - some
+  # emit one JSON array for the whole output, some emit one JSON object per
+  # line, this host's (Docker 29.5.2) emits one single-element JSON array
+  # per line. splitlines+from_json handles all of those uniformly; flatten
+  # then unwraps the array-per-line case (flatten only unwraps nested
+  # lists, dicts pass through untouched, so object-per-line output is
+  # unaffected).
+  vars:
+    _containers: >-
+      {{
+        (_diode_ps.stdout | default('') | trim).splitlines()
+        | map('from_json') | list | flatten
+      }}
+  until: >-
+    (_containers | rejectattr('Service', 'in', diode_server_oneshot_services)
+     | rejectattr('State', 'equalto', 'running') | list | length == 0)
+    and
+    (_containers | selectattr('Service', 'in', diode_server_oneshot_services)
+     | rejectattr('ExitCode', 'equalto', 0) | list | length == 0)
+  retries: 10
+  delay: 3
 
 - name: Parse container states
   ansible.builtin.set_fact:
-    # docker compose ps --format json isn't consistent across versions -
-    # some emit one JSON array for the whole output, some emit one JSON
-    # object per line, this host's (Docker 29.5.2) emits one single-element
-    # JSON array per line. splitlines+from_json handles all of those
-    # uniformly; flatten then unwraps the array-per-line case (flatten only
-    # unwraps nested lists, dicts pass through untouched, so object-per-line
-    # output is unaffected).
     _diode_containers: >-
       {{
         (_diode_ps.stdout | trim).splitlines()
         | map('from_json') | list | flatten
       }}
 
-- name: Fail if any Diode server container is not running
+- name: Fail if any long-running Diode server container is not running
   ansible.builtin.assert:
     that: >-
       _diode_containers
+      | rejectattr('Service', 'in', diode_server_oneshot_services)
       | rejectattr('State', 'equalto', 'running')
       | list | length == 0
     fail_msg: >-
-      Not all Diode server containers are running:
-      {{ _diode_containers | rejectattr('State', 'equalto', 'running') | map(attribute='Service') | list }}
+      Not all long-running Diode server containers are running:
+      {{ _diode_containers | rejectattr('Service', 'in', diode_server_oneshot_services)
+         | rejectattr('State', 'equalto', 'running') | map(attribute='Service') | list }}
+
+- name: Fail if a one-shot Diode server job didn't exit cleanly
+  ansible.builtin.assert:
+    that: >-
+      _diode_containers
+      | selectattr('Service', 'in', diode_server_oneshot_services)
+      | rejectattr('ExitCode', 'equalto', 0)
+      | list | length == 0
+    fail_msg: >-
+      One-shot Diode server job(s) exited non-zero (check `docker compose logs <service>`):
+      {{ _diode_containers | selectattr('Service', 'in', diode_server_oneshot_services)
+         | rejectattr('ExitCode', 'equalto', 0) | map(attribute='Service') | list }}
 
 - name: Wait for the Diode client-facing gRPC endpoint to accept connections
   ansible.builtin.wait_for:
