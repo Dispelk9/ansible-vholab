@@ -43,13 +43,17 @@
 
 - name: Parse running container list
   ansible.builtin.set_fact:
-    # `docker compose ps --format json` emits one JSON object per line on
-    # recent versions, or a single JSON array on older ones - handle both.
+    # `docker compose ps --format json` isn't consistent across versions -
+    # one JSON object per line, a single JSON array for the whole output, or
+    # (this host's Docker 29.5.2) one single-element JSON array per line.
+    # splitlines+from_json handles all of those uniformly; flatten then
+    # unwraps the array-per-line case (flatten only unwraps nested lists,
+    # dicts pass through untouched, so object-per-line output is
+    # unaffected).
     netbox_running_services: >-
       {{
-        (_netbox_compose_ps.stdout | trim | first == '[')
-        | ternary(_netbox_compose_ps.stdout | from_json,
-                  (_netbox_compose_ps.stdout | trim).splitlines() | map('from_json') | list)
+        (_netbox_compose_ps.stdout | trim).splitlines()
+        | map('from_json') | list | flatten
       }}
 
 - name: Fail if the core netbox container isn't running at all

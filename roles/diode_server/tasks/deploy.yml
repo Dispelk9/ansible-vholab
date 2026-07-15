@@ -36,11 +36,17 @@
 
 - name: Parse container states
   ansible.builtin.set_fact:
+    # docker compose ps --format json isn't consistent across versions -
+    # some emit one JSON array for the whole output, some emit one JSON
+    # object per line, this host's (Docker 29.5.2) emits one single-element
+    # JSON array per line. splitlines+from_json handles all of those
+    # uniformly; flatten then unwraps the array-per-line case (flatten only
+    # unwraps nested lists, dicts pass through untouched, so object-per-line
+    # output is unaffected).
     _diode_containers: >-
       {{
-        (_diode_ps.stdout | trim | first == '[')
-        | ternary(_diode_ps.stdout | from_json,
-                  (_diode_ps.stdout | trim).splitlines() | map('from_json') | list)
+        (_diode_ps.stdout | trim).splitlines()
+        | map('from_json') | list | flatten
       }}
 
 - name: Fail if any Diode server container is not running
@@ -68,4 +74,6 @@
 
 - name: Report Postgres health
   ansible.builtin.debug:
-    msg: "Diode postgres health: {{ (_diode_pg_ps.stdout | from_json).Health | default('unknown') }}"
+    msg: >-
+      Diode postgres health:
+      {{ ((_diode_pg_ps.stdout | trim).splitlines() | map('from_json') | list | flatten | first).Health | default('unknown') }}
