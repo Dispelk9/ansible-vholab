@@ -65,8 +65,13 @@ netbox_diode_pip_install_cmd: "/opt/netbox/venv/bin/pip install --no-cache-dir -
 # grpcs:// if you terminate TLS in front of Diode. diode_frontend_service is
 # a fact set by the diode_server role (which must run before this one in
 # the play - netbox_discovery_deploy.yml already orders it that way) from
-# introspecting Diode's actual compose file.
-diode_plugin_diode_target: "grpc://{{ diode_frontend_service | default('ingress-nginx') }}:8080/diode"
+# introspecting Diode's actual compose file. Port is
+# diode_nginx_internal_port (diode_server's own default, visible here since
+# diode_server runs first in the play) - nginx's real internal listen port
+# is 80 (confirmed against the fetched nginx.conf), not 8080 as this line
+# wrongly assumed until it was caught while debugging why ingress-nginx
+# wouldn't start.
+diode_plugin_diode_target: "grpc://{{ diode_frontend_service | default('ingress-nginx') }}:{{ diode_nginx_internal_port | default(80) }}/diode"
 diode_plugin_username: "diode"
 # netbox_to_diode_client_secret is deliberately NOT set here - it's supplied
 # via a Docker secret file (the plugin's own documented default mechanism)

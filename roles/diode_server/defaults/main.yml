@@ -50,20 +50,50 @@ diode_server_nginx_conf_url: >-
   https://raw.githubusercontent.com/netboxlabs/diode/{{ diode_server_compose_ref }}/diode-server/docker/nginx/nginx.conf
 
 # Where the Diode server's client-facing gRPC endpoint (fronted by nginx)
-# listens. Internal container port is stable at 8080 per upstream; the host
-# bind is only needed so Orb Agent (which runs with network_mode: host) and
-# any external Diode Agents can reach it.
-#
+# listens. Internal container port is 80 - confirmed against the fetched
+# nginx.conf (`listen 80;`) and the base docker-compose.yaml's own
+# `ports: - ${DIODE_NGINX_PORT}:80` line, NOT 8080 (an earlier, wrong
+# assumption in this file - nothing in the upstream image listens on 8080).
+# The host bind is only needed so Orb Agent (which runs with
+# network_mode: host) and any external Diode Agents can reach it.
+diode_nginx_internal_port: 80
+
 # NOT 8080/8081: the live host already has app-backend-1 on
 # 0.0.0.0:8080->8080/tcp and app-frontend-1 on 0.0.0.0:8081->80/tcp (from
 # `docker ps -a`) - binding Diode's nginx there too would fail with
-# "address already in use". 8180 was confirmed free against every
-# host-published port seen (8080, 8081, 8082, 8083, 8084, 8443, 3000, 9090
-# taken; 80/443 used by the host-level nginx). Re-check with
-# `ss -tlnp | grep 8180` before first deploy in case something changed.
-diode_nginx_internal_port: 8080
+# "address already in use". NOT 8180 either: 8180 was originally suspected
+# of hitting a stuck Docker port-allocator bug, but that diagnosis was
+# wrong - re-tested on a fresh, never-used port (8280) and hit the
+# identical failure, which led to the real cause (see
+# diode_nginx_shadow_port below). Keeping 8280 rather than reverting to
+# 8180 since there's no reason to go back once a port's been thoroughly
+# exercised as part of debugging this.
 diode_nginx_bind_ip: "127.0.0.1"
-diode_nginx_bind_port: 8180
+diode_nginx_bind_port: 8280
+
+# Compose merges `ports:` LISTS across files by appending, not replacing -
+# so the base docker-compose.yaml's own `ports: - ${DIODE_NGINX_PORT}:80`
+# entry for ingress-nginx is never actually removed by our override, it's
+# ADDED to it (confirmed via `docker compose config`, which showed two
+# separate published-port entries for the same container). Since
+# templates/env.j2 sets DIODE_NGINX_PORT, that base-file entry was
+# publishing to 0.0.0.0:{{ diode_nginx_bind_port }} - the SAME host port
+# our own override also publishes to (127.0.0.1:{{ diode_nginx_bind_port }})
+# - so the container was conflicting with itself on every single deploy,
+# regardless of which port number was chosen (which is why switching from
+# 8180 to 8280 didn't help - it was never an external conflict).
+#
+# DIODE_NGINX_PORT is only consumed by that one base-file `ports:` line
+# (and a passthrough `environment:` entry nothing inside the container
+# actually reads) - nothing else depends on its value, so instead of a bare
+# port number, env.j2 sets it to a full "127.0.0.1:<port>" string. Because
+# variable substitution is plain text replacement before Compose parses the
+# result, "${DIODE_NGINX_PORT}:80" becomes "127.0.0.1:<port>:80" - a
+# complete, valid 3-part mapping that (a) is loopback-only, matching our
+# own override's intent instead of silently exposing Diode on all
+# interfaces, and (b) uses a different port number than our own override,
+# so the two no longer collide.
+diode_nginx_shadow_port: "{{ diode_nginx_bind_port | int + 1 }}"
 
 # Fallback service key if we can't detect the nginx front-door service by
 # introspecting the fetched compose file (see tasks/detect_frontend.yml).

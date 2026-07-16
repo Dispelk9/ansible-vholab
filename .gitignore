@@ -1,0 +1,8 @@
+# Vault password file - never commit this. host_vars/*/vault.yml files are
+# NOT ignored here - this repo's convention (see host_vars/otrs-p/vault.yml
+# and host_vars/vhohetzner1/vault.yml.example) is to commit those, but only
+# ever in their ansible-vault ENCRYPTED form. Always `ansible-vault encrypt`
+# before staging one; git can't tell plaintext from ciphertext for you.
+.vault_pass
+
+*.retry

@@ -19,9 +19,9 @@ orb_dry_run_output_dir: "/opt/orb/dry-run"
 # network_mode: host (required for raw scanning - see docs), so it must
 # address Diode via the host-published port, not a container name on the
 # shared bridge network. Must match diode_server's diode_nginx_bind_port
-# (8180 on this host - see roles/diode_server/defaults/main.yml).
+# (8280 on this host - see roles/diode_server/defaults/main.yml).
 diode_nginx_bind_ip: "127.0.0.1"
-diode_nginx_bind_port: 8180
+diode_nginx_bind_port: 8280
 orb_diode_client_id: "orb-agent"
 
 # Discovery target(s) for the network_discovery backend's default policy.

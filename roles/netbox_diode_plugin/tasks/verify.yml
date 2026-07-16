@@ -1,8 +1,18 @@
 ---
+# NOT via /api/status/ - that endpoint requires authentication whenever
+# LOGIN_REQUIRED is set (true on this instance), so an unauthenticated
+# request gets 403. Reading `django.conf.settings.PLUGINS` via `manage.py
+# shell -c` instead avoids HTTP/auth entirely, and is at least as strong a
+# signal: if a listed plugin failed to import, Django's own app registry
+# setup would have crashed and this container wouldn't be able to run
+# `manage.py shell` at all - so PLUGINS containing the name confirms it's
+# both configured and successfully loaded.
+
 - name: Verify the Diode plugin is actually loaded, post-rebuild
   ansible.builtin.command: >
     docker compose exec -T netbox
-    python3 -c "import json,urllib.request; print(json.load(urllib.request.urlopen('http://localhost:8080/api/status/'))['plugins'])"
+    /opt/netbox/venv/bin/python3 /opt/netbox/netbox/manage.py shell -c
+    "from django.conf import settings; print(list(settings.PLUGINS))"
   args:
     chdir: "{{ netbox_docker_dir }}"
   changed_when: false
@@ -12,6 +22,6 @@
   ansible.builtin.assert:
     that: "'{{ diode_plugin_module_name }}' in _netbox_plugins.stdout"
     fail_msg: >-
-      {{ diode_plugin_module_name }} was not reported by /api/status/ after
-      the rebuild: {{ _netbox_plugins.stdout }}
+      {{ diode_plugin_module_name }} was not reported in settings.PLUGINS
+      after the rebuild: {{ _netbox_plugins.stdout }}
     success_msg: "Diode plugin confirmed loaded: {{ _netbox_plugins.stdout }}"

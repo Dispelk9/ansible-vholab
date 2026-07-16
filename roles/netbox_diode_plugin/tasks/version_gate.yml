@@ -1,31 +1,51 @@
 ---
 # The running image's tag (e.g. "v4.5-4.0.1") encodes netbox-docker's own
 # release, not necessarily the exact NetBox core patch version. Query the
-# running instance directly (NetBox's unauthenticated /api/status/) and
-# fail fast, before building anything, if it's outside the range the pinned
-# Diode plugin version declares support for.
+# running instance directly and fail fast, before building anything, if
+# it's outside the range the pinned Diode plugin version declares support
+# for.
+#
+# NOT via /api/status/ - that endpoint requires authentication whenever
+# LOGIN_REQUIRED is set (true on this instance, a reasonable hardening
+# choice for a publicly reverse-proxied NetBox), so an unauthenticated
+# request gets 403. Reading `django.conf.settings.VERSION` via `manage.py
+# shell -c` instead avoids HTTP/auth entirely - confirmed live against this
+# host: it returns "4.5.3-Docker-4.0.1" (NetBox core version + netbox-docker's
+# own build suffix combined, exactly what this task's version comparison
+# needs to split apart).
 
-- name: Query the running NetBox core version via /api/status/
+- name: Query the running NetBox core version via Django settings
   ansible.builtin.command: >
     docker compose exec -T netbox
-    python3 -c "import json,urllib.request; print(json.load(urllib.request.urlopen('http://localhost:8080/api/status/'))['netbox-version'])"
+    /opt/netbox/venv/bin/python3 /opt/netbox/netbox/manage.py shell -c
+    "from django.conf import settings; print(settings.VERSION)"
   args:
     chdir: "{{ netbox_docker_dir }}"
   changed_when: false
-  register: _netbox_core_version
+  register: _netbox_core_version_raw
+
+- name: Extract the NetBox core version (strip netbox-docker's "-Docker-X.Y.Z" build suffix)
+  ansible.builtin.set_fact:
+    # manage.py shell -c prints several "loaded config" lines plus a blank
+    # line before the actual value - splitlines()+select() reliably grabs
+    # the last non-blank line regardless of exact trailing whitespace.
+    _netbox_core_version: >-
+      {{
+        (_netbox_core_version_raw.stdout.splitlines() | select() | list | last).split('-') | first
+      }}
 
 - name: Assert the running NetBox core version is within the plugin's supported range
   ansible.builtin.assert:
     that:
-      - _netbox_core_version.stdout | trim is version(diode_plugin_min_netbox_version, '>=')
-      - _netbox_core_version.stdout | trim is version(diode_plugin_max_netbox_version, '<=')
+      - _netbox_core_version is version(diode_plugin_min_netbox_version, '>=')
+      - _netbox_core_version is version(diode_plugin_max_netbox_version, '<=')
     fail_msg: >-
-      Running NetBox core version {{ _netbox_core_version.stdout | trim }} is outside
+      Running NetBox core version {{ _netbox_core_version }} is outside
       the range Diode plugin {{ diode_plugin_version }} declares support for
       ({{ diode_plugin_min_netbox_version }} - {{ diode_plugin_max_netbox_version }}).
       Pick a plugin version whose netbox_diode_plugin/__init__.py min_version/
-      max_version covers {{ _netbox_core_version.stdout | trim }} before continuing:
+      max_version covers {{ _netbox_core_version }} before continuing:
       https://github.com/netboxlabs/diode-netbox-plugin/releases
     success_msg: >-
-      NetBox core {{ _netbox_core_version.stdout | trim }} is within the supported
+      NetBox core {{ _netbox_core_version }} is within the supported
       range for Diode plugin {{ diode_plugin_version }}.

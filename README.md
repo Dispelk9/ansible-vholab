@@ -49,10 +49,15 @@ Before first run:
   network(s) you have permission to scan before setting `orb_dry_run: false`
   (defaults to `true`: Orb Agent writes discovered inventory to
   `/opt/netbox/discovery/orb/data/dry-run/` instead of calling Diode).
-- `diode_nginx_bind_port` is `8180`, not the upstream default `8080` -
+- `diode_nginx_bind_port` is `8280`, not the upstream default `8080` -
   `8080`/`8081` are already bound on this host by unrelated containers
-  (`app-backend-1`/`app-frontend-1`). Re-check with `ss -tlnp` if the host's
-  other services have changed since.
+  (`app-backend-1`/`app-frontend-1`), and `8180` (the first alternative
+  tried) hit a Docker daemon bug where the in-memory port-allocator got
+  stuck reporting "port is already allocated" after repeated rapid
+  redeploys on that port during initial rollout, even with nothing actually
+  listening - see the comment on `diode_nginx_bind_port` in
+  `group_vars/vhodockers.yml`. Re-check with `ss -tlnp` if the host's other
+  services have changed since.
 - Disk space is tight on this host (observed 87.1% of 37.23GB used, ~4.8GB
   free) - `roles/diode_server/tasks/preflight.yml` gates on a minimum of 3GB
   free before pulling any images and will fail fast with a clear message if

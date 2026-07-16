@@ -28,7 +28,20 @@ docker_discovery_network_name: netbox_discovery_net
 
 # NOT 8080/8081 - both already bound on this host by unrelated containers
 # (app-backend-1, app-frontend-1). See roles/diode_server/defaults/main.yml.
-diode_nginx_bind_port: 8180
+#
+# Moved off 8180 (2026-07-15): after many rapid down/up cycles on that port
+# during initial rollout, Docker's in-memory port-allocator got stuck
+# reporting "port is already allocated" for it even with nothing actually
+# listening (confirmed via `ss -ltnp`, iptables NAT table, and a live
+# `docker compose up --force-recreate` reproduction) - a known class of
+# Docker daemon bug where the allocator's bookkeeping desyncs from real
+# socket/iptables state. Fixing it properly means restarting the Docker
+# daemon, which isn't safe to do casually on this shared host (several
+# other unrelated production containers have no restart policy and
+# wouldn't come back on their own) - moving to a fresh, never-touched port
+# sidesteps it with zero blast radius. Re-check with `ss -tlnp` before
+# reusing 8180 again.
+diode_nginx_bind_port: 8280
 
 diode_plugin_version: "1.12.0"   # see roles/netbox_diode_plugin/defaults for why not the latest (1.14.0)
 
