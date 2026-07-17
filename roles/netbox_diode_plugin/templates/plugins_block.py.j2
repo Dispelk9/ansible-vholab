@@ -2,6 +2,21 @@
 # replaces) the PLUGINS / PLUGINS_CONFIG already defined earlier in this
 # file, so any other plugins configured here by hand are left untouched.
 #
+# Does NOT assume PLUGINS/PLUGINS_CONFIG already exist in this file - that
+# assumption broke a live, previously-4-months-healthy NetBox instance
+# (NameError: name 'PLUGINS' is not defined) because this deployment's own
+# configuration/plugins.py doesn't define them itself. Defining them here
+# if missing is safe either way: a no-op when they already exist elsewhere
+# in the file, load-bearing when they don't.
+try:
+    PLUGINS
+except NameError:
+    PLUGINS = []
+try:
+    PLUGINS_CONFIG
+except NameError:
+    PLUGINS_CONFIG = {}
+
 # netbox_to_diode_client_secret is deliberately NOT set here. The plugin's
 # own documented default is to read it from a Docker secret file at
 # /run/secrets/netbox_to_diode (secrets_path + netbox_to_diode_client_secret_name

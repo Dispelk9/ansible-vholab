@@ -1,6 +1,12 @@
 ---
-- name: Detect running netbox-docker services, image and take safety backups
+- name: Safe setup (directory checks, backup plumbing) - no netbox-running dependency
   ansible.builtin.import_tasks: prep.yml
+
+- name: Repair and restart netbox if it isn't currently running
+  ansible.builtin.import_tasks: self_heal.yml
+
+- name: Detect running netbox-docker services and image (netbox must be up by now)
+  ansible.builtin.import_tasks: detect_running_state.yml
 
 - name: Gate on NetBox core version compatibility with the pinned plugin version
   ansible.builtin.import_tasks: version_gate.yml

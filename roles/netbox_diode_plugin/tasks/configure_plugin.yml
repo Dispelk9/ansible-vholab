@@ -26,10 +26,12 @@
     dest: "{{ netbox_backup_dir }}/plugins.py.{{ netbox_backup_timestamp }}.bak"
     mode: preserve
 
-# Assumes PLUGINS = [] and PLUGINS_CONFIG = {} are already defined earlier
-# in the file, as shipped by stock netbox-docker. If you started from a
-# stripped-down configuration/plugins.py that doesn't define them, add
-# those two lines near the top before re-running.
+# plugins_block.py.j2 defines PLUGINS/PLUGINS_CONFIG itself if they aren't
+# already present earlier in the file (see that template) - don't assume
+# stock netbox-docker always pre-defines them. It doesn't always: this
+# exact assumption caused a live NetBox instance to crash-loop with
+# NameError: name 'PLUGINS' is not defined on a deployment whose
+# configuration/plugins.py didn't define them itself.
 - name: Add the managed Diode plugin block to configuration/plugins.py
   ansible.builtin.blockinfile:
     path: "{{ netbox_docker_dir }}/configuration/plugins.py"

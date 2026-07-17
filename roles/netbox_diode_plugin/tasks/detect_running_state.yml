@@ -1,0 +1,58 @@
+---
+# Split out from prep.yml so self_heal.yml runs first and gets a chance to
+# repair a crashed netbox before this file's "must already be running"
+# assert - what we still need, gathered live rather than assumed, is which
+# services are actually running right now (see README - netbox-housekeeping
+# is notably absent), and the exact image reference NetBox is currently
+# running (since roles/netbox/tasks/main.yml tracks netbox-docker's
+# floating "release" branch, not a pinned tag - a static default here would
+# drift out of sync over time).
+
+- name: List running containers for the netbox-docker project
+  ansible.builtin.command: docker compose ps --format json
+  args:
+    chdir: "{{ netbox_docker_dir }}"
+  changed_when: false
+  register: _netbox_compose_ps
+
+- name: Parse running container list
+  ansible.builtin.set_fact:
+    # `docker compose ps --format json` isn't consistent across versions -
+    # one JSON object per line, a single JSON array for the whole output, or
+    # (this host's Docker 29.5.2) one single-element JSON array per line.
+    # splitlines+from_json handles all of those uniformly; flatten then
+    # unwraps the array-per-line case (flatten only unwraps nested lists,
+    # dicts pass through untouched, so object-per-line output is
+    # unaffected).
+    netbox_running_services: >-
+      {{
+        (_netbox_compose_ps.stdout | trim).splitlines()
+        | map('from_json') | list | flatten
+      }}
+
+- name: Fail if the core netbox container isn't running at all
+  ansible.builtin.assert:
+    that: "'netbox' in (netbox_running_services | map(attribute='Service') | list)"
+    fail_msg: >-
+      No running 'netbox' service found in {{ netbox_docker_dir }} even
+      after self_heal.yml's recovery attempt. Check
+      `docker compose logs netbox` on the host - this is likely a real
+      failure (not the known bad-plugins.py case self_heal.yml handles)
+      that needs manual diagnosis.
+
+- name: Detect the exact image reference NetBox is currently running
+  ansible.builtin.command: >
+    docker inspect --format {% raw %}'{{.Config.Image}}'{% endraw %}
+    {{ netbox_compose_project_name }}-netbox-1
+  changed_when: false
+  register: _netbox_running_image
+
+- name: Set fact with the detected (or overridden) upstream image reference
+  ansible.builtin.set_fact:
+    netbox_upstream_image: "{{ netbox_upstream_image_override | default(_netbox_running_image.stdout | trim, true) }}"
+
+- name: Report detected upstream image and running services
+  ansible.builtin.debug:
+    msg: >-
+      NetBox is currently running {{ netbox_upstream_image }} with services:
+      {{ netbox_running_services | map(attribute='Service') | list }}

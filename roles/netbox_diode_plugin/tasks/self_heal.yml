@@ -1,0 +1,77 @@
+---
+# Recovery path for the incident that motivated this file: NetBox
+# crash-looping because configuration/plugins.py's ANSIBLE MANAGED BLOCK
+# referenced PLUGINS/PLUGINS_CONFIG without them being defined earlier in
+# the file (NameError: name 'PLUGINS' is not defined - this deployment's
+# own configuration/plugins.py doesn't define them itself, see the note in
+# configure_plugin.yml). Without this file, the role's "netbox must already
+# be running" assumption in detect_running_state.yml creates a
+# chicken-and-egg deadlock: netbox_diode_plugin refuses to touch anything
+# until netbox is healthy, but netbox can't become healthy until
+# netbox_diode_plugin re-applies a corrected plugins.py/secret. Fixing that
+# by hand on the host defeats the entire point of managing this through
+# ansible - this file lets the SAME re-run repair it instead.
+#
+# Safe on a normal, already-healthy run: skips everything below if netbox
+# is already running.
+
+- name: Check whether the netbox container is currently running
+  ansible.builtin.command: docker compose ps --format json netbox
+  args:
+    chdir: "{{ netbox_docker_dir }}"
+  changed_when: false
+  failed_when: false
+  register: _netbox_self_heal_ps
+
+- name: Determine netbox's current state (if it exists at all)
+  ansible.builtin.set_fact:
+    _netbox_self_heal_state: >-
+      {{
+        (_netbox_self_heal_ps.stdout | trim | length > 0)
+        | ternary(
+            ((_netbox_self_heal_ps.stdout.splitlines() | select() | list | map('from_json') | list | flatten | first).State | default('missing')),
+            'missing'
+          )
+      }}
+
+- name: Report netbox's current state before proceeding
+  ansible.builtin.debug:
+    msg: >-
+      netbox container state: {{ _netbox_self_heal_state }}
+      {{ '- healthy, nothing to repair' if _netbox_self_heal_state == 'running' else '- attempting recovery' }}
+
+- name: Repair and restart netbox if it isn't running
+  when: _netbox_self_heal_state != 'running'
+  block:
+    - name: Recovery - re-provision the netbox_to_diode Docker secret (in case it's missing/stale)
+      ansible.builtin.import_tasks: secrets.yml
+
+    - name: Recovery - re-apply configuration/plugins.py (this is almost always why netbox is down)
+      ansible.builtin.import_tasks: configure_plugin.yml
+
+    - name: Recovery - restart netbox and netbox-worker
+      ansible.builtin.command: docker compose up -d netbox netbox-worker
+      args:
+        chdir: "{{ netbox_docker_dir }}"
+      register: _netbox_self_heal_restart
+      changed_when: true
+
+    - name: Recovery - wait for netbox to report running
+      ansible.builtin.command: docker compose ps --format json netbox
+      args:
+        chdir: "{{ netbox_docker_dir }}"
+      changed_when: false
+      register: _netbox_self_heal_recheck
+      until: >-
+        (_netbox_self_heal_recheck.stdout | trim | length > 0)
+        and
+        ((_netbox_self_heal_recheck.stdout.splitlines() | select() | list | map('from_json') | list | flatten | first).State == 'running')
+      retries: "{{ netbox_health_retries }}"
+      delay: "{{ netbox_health_delay }}"
+
+    - name: Recovery - report outcome
+      ansible.builtin.debug:
+        msg: >-
+          netbox recovered and is now running. If this keeps happening,
+          the repair above (re-applying configuration/plugins.py) is
+          treating the symptom - find and fix the actual root cause.

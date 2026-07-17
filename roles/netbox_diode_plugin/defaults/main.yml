@@ -54,11 +54,14 @@ diode_plugin_module_name: "netbox_diode_plugin"
 diode_plugin_min_netbox_version: "4.4.10"
 diode_plugin_max_netbox_version: "4.6.99"
 
-# How the plugin is pip-installed inside the custom image. netbox-docker's
-# own images have moved between plain pip and `uv` across versions - verify
-# this against the base image tag actually detected at build time (see
-# tasks/prep.yml) and adjust if the build fails with "pip: not found" or similar.
-netbox_diode_pip_install_cmd: "/opt/netbox/venv/bin/pip install --no-cache-dir -r /opt/netbox/plugin_requirements.txt"
+# How the plugin is pip-installed inside the custom image. netboxcommunity/netbox:v4.5-4.0.1
+# (the tag actually detected at build time - see tasks/prep.yml) ships `uv`,
+# not a `pip` binary inside /opt/netbox/venv/bin - confirmed by pulling this
+# exact image and inspecting it directly: only python/python3 symlinks live
+# there, `uv` is at /usr/local/bin/uv. --python is explicit rather than
+# relying on the image's VIRTUAL_ENV env var, so this keeps working even if
+# a future base image stops setting it.
+netbox_diode_pip_install_cmd: "uv pip install --python /opt/netbox/venv/bin/python --no-cache -r /opt/netbox/plugin_requirements.txt"
 
 # PLUGINS_CONFIG["netbox_diode_plugin"] values. Use grpc:// for plaintext
 # (fine on the internal docker_discovery_network_name bridge network) or
