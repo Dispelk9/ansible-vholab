@@ -63,8 +63,8 @@
     and
     (_containers | selectattr('Service', 'in', diode_server_oneshot_services)
      | rejectattr('ExitCode', 'equalto', 0) | list | length == 0)
-  retries: 10
-  delay: 3
+  retries: 20
+  delay: 5
 
 - name: Parse container states
   ansible.builtin.set_fact:

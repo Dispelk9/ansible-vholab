@@ -1,6 +1,20 @@
 ---
-- name: Recreate NetBox app services with the custom image
-  ansible.builtin.command: docker compose up -d {{ netbox_diode_app_services_effective | join(' ') }}
+# Targets EVERY currently-running netbox-docker service
+# (netbox_running_services, from detect_running_state.yml), not just
+# netbox_diode_app_services_effective (netbox/netbox-worker). Postgres,
+# redis and redis-cache aren't in the app services list and don't need the
+# custom image, but they DO need to be recreated here: docker-compose.diode.yml.j2
+# used to override the whole project's "default" network, so they were
+# wrongly attached to the shared discovery network by a previous
+# deploy - recreating only netbox/netbox-worker would leave them stuck
+# there. This still won't start anything that wasn't already running
+# (e.g. netbox-housekeeping if absent), same as netbox_diode_app_services_effective's
+# own intent - it only reconciles services docker compose already knows
+# about as part of this project.
+- name: Recreate all running netbox-docker services (picks up network/image/secret changes)
+  ansible.builtin.command: >
+    docker compose up -d
+    {{ (netbox_running_services | map(attribute='Service') | list) | join(' ') }}
   args:
     chdir: "{{ netbox_docker_dir }}"
   register: _diode_deploy_up

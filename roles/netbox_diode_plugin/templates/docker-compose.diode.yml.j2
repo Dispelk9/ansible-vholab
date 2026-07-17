@@ -7,10 +7,22 @@
 #
 # - Swaps the NetBox application services onto the Diode-plugin-enabled
 #   custom image.
-# - Re-points the whole project's implicit "default" network at our shared,
-#   externally-managed bridge network (all netbox-docker services end up on
-#   it, not just the app ones - harmless, and avoids hardcoding/guessing
-#   which services exist across netbox-docker versions).
+# - Multi-homes ONLY the app services (netbox_diode_app_services_effective)
+#   onto the shared discovery network, in ADDITION to (not instead of)
+#   their existing "default" network - NOT a blanket project-wide override.
+#   An earlier version of this file redefined the whole project's "default"
+#   network, which swept netbox-docker's OWN postgres/redis/redis-cache
+#   containers onto the shared network too. Diode's own compose project
+#   also has services literally named "postgres" and "redis" - two
+#   different containers answering to the same DNS alias on the same
+#   network, so diode-reconciler's lookups for "postgres"/"redis"
+#   non-deterministically resolved to netbox-docker's databases instead of
+#   Diode's own, and got "password authentication failed" against a
+#   database that has no idea what the "diode" role even is. Confirmed live:
+#   `docker network inspect netbox_discovery_net` listed
+#   netbox-docker-postgres-1 AND diode-postgres-1 together, and
+#   diode-reconciler's actual connection attempt went to an IP that matched
+#   neither diode-postgres-1's real address.
 # - Mounts the netbox_to_diode client secret as a Docker secret, per the
 #   plugin's own default secret-file mechanism, so it never has to live in
 #   configuration/plugins.py.
@@ -20,10 +32,18 @@ services:
     image: "{{ netbox_diode_custom_image_name }}:{{ netbox_diode_custom_image_tag }}"
     secrets:
       - netbox_to_diode
+    networks:
+      - default
+      - netbox_discovery
 {% endfor %}
 
 networks:
-  default:
+  # "default" is deliberately NOT redefined here - it stays whatever
+  # docker-compose.yml/docker-compose.override.yml already define it as
+  # (netbox-docker's own private project network), so postgres/redis/
+  # redis-cache (and anything else not listed above) are entirely
+  # unaffected by this file.
+  netbox_discovery:
     name: "{{ docker_discovery_network_name }}"
     external: true
 

@@ -22,12 +22,30 @@ except NameError:
 # /run/secrets/netbox_to_diode (secrets_path + netbox_to_diode_client_secret_name
 # defaults) - see tasks/secrets.yml and docker-compose.diode.yml.j2. This
 # keeps the shared secret out of configuration/plugins.py entirely.
-if "{{ diode_plugin_module_name }}" not in PLUGINS:
-    PLUGINS.append("{{ diode_plugin_module_name }}")
+#
+# This block is preserved (via git stash) across netbox_deploy.yml re-runs,
+# which use the plain upstream image - one that never has this package
+# installed at all (only the custom Diode-plugin image, built separately,
+# does). Blindly appending the module name to PLUGINS regardless crashed
+# NetBox outright on the plain image (Django fails to import a plugin
+# module that doesn't exist in that image - confirmed live: "exited (1)"
+# right after the plain-image `up -d`, immediately following a run where
+# this same block worked fine on the custom image). Checking the package is
+# actually importable first makes this block safe on BOTH images: a no-op
+# on the plain one, load-bearing on the custom one.
+try:
+    import importlib.util as _diode_importutil
+    _diode_plugin_importable = _diode_importutil.find_spec("{{ diode_plugin_module_name }}") is not None
+except ImportError:
+    _diode_plugin_importable = False
 
-PLUGINS_CONFIG.setdefault("{{ diode_plugin_module_name }}", {})
-PLUGINS_CONFIG["{{ diode_plugin_module_name }}"].update({
-    "diode_target_override": "{{ diode_plugin_diode_target }}",
-    "diode_username": "{{ diode_plugin_username }}",
-    "netbox_to_diode_client_id": "{{ netbox_to_diode_client_id }}",
-})
+if _diode_plugin_importable:
+    if "{{ diode_plugin_module_name }}" not in PLUGINS:
+        PLUGINS.append("{{ diode_plugin_module_name }}")
+
+    PLUGINS_CONFIG.setdefault("{{ diode_plugin_module_name }}", {})
+    PLUGINS_CONFIG["{{ diode_plugin_module_name }}"].update({
+        "diode_target_override": "{{ diode_plugin_diode_target }}",
+        "diode_username": "{{ diode_plugin_username }}",
+        "netbox_to_diode_client_id": "{{ netbox_to_diode_client_id }}",
+    })

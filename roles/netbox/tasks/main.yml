@@ -7,13 +7,67 @@
     group: root
     mode: "0755"
 
-- name: Clone netbox-docker repo
+- name: Check whether netbox-docker is already a git checkout
+  ansible.builtin.stat:
+    path: "{{ netbox_install_dir }}/netbox-docker/.git"
+  register: _netbox_docker_git_stat
+
+- name: Clone netbox-docker repo (first-time only)
+  ansible.builtin.git:
+    repo: "{{ netbox_repo }}"
+    dest: "{{ netbox_install_dir }}/netbox-docker"
+    version: "{{ netbox_repo_branch }}"
+  when: not _netbox_docker_git_stat.stat.exists
+
+# This role's own "Generate secrets" block below rewrites env/*.env with
+# real secrets every run, and netbox_diode_plugin (a separate playbook)
+# modifies configuration/plugins.py in place - both are tracked files in
+# netbox-docker's own git history. update:yes below refuses to touch a
+# dirty working tree (force:no), so without marking these, any re-run
+# fails outright on "Local modifications exist in repository" - confirmed
+# live. git stash was tried first and made this WORSE, not better: this
+# role's own secrets task rewrites env/netbox.env again after the stash
+# pop, but by the time the stash is restored later it conflicts with that
+# fresh rewrite of the SAME file ("Your local changes to ... env/netbox.env
+# would be overwritten by merge") - also confirmed live. skip-worktree
+# tells git to never compare or touch these specific files during
+# pull/merge at all, so there's nothing left to conflict with; idempotent
+# to (re)run every time.
+- name: Mark files this role and netbox_diode_plugin customize in place as skip-worktree
+  ansible.builtin.command:
+    argv:
+      - git
+      - update-index
+      - --skip-worktree
+      - "{{ item }}"
+  args:
+    chdir: "{{ netbox_install_dir }}/netbox-docker"
+  loop:
+    - env/netbox.env
+    - env/postgres.env
+    - env/redis.env
+    - env/redis-cache.env
+    - configuration/plugins.py
+  changed_when: false
+  when: _netbox_docker_git_stat.stat.exists
+
+- name: Update netbox-docker repo to the latest release
   ansible.builtin.git:
     repo: "{{ netbox_repo }}"
     dest: "{{ netbox_install_dir }}/netbox-docker"
     version: "{{ netbox_repo_branch }}"
     update: yes
+  when: _netbox_docker_git_stat.stat.exists
 
+# configuration/plugins.py keeps whatever it already had (skip-worktree
+# means this pull never touched it) - including netbox_diode_plugin's
+# customization, if that's ever run before. That's safe even though this
+# role always runs NetBox on the plain upstream image (see the -f scoping
+# on Pull images/Start NetBox stack, below) which never has that plugin
+# package installed: plugins_block.py.j2 only registers the plugin in
+# PLUGINS/PLUGINS_CONFIG if the package is actually importable, so it's a
+# no-op here and load-bearing once netbox_discovery_deploy.yml swaps in the
+# custom image.
 - name: Write docker-compose.override.yml (bind NetBox locally)
   ansible.builtin.copy:
     dest: "{{ netbox_install_dir }}/netbox-docker/docker-compose.override.yml"
@@ -156,7 +210,16 @@
         - { key: "API_TOKEN_PEPPER_1", value: "{{ netbox_pepper }}" }
         - { key: "REDIS_PASSWORD", value: "{{ netbox_redispass }}" }
         - { key: "REDIS_CACHE_PASSWORD", value: "{{ netbox_rediscachepass }}" }
-        - { key: "ALLOWED_HOSTS", value: "{{ netbox_fqdn }} localhost 127.0.0.1" }
+        # "netbox" (the bare container/service name) is required in addition
+        # to the public FQDN - anything reaching NetBox via
+        # http://netbox:8080/... on the shared discovery network (Diode's
+        # reconciler calling back into the plugin API) sends that as its
+        # Host header, and Django's ALLOWED_HOSTS check rejects anything not
+        # in this list with a bare, unstyled 400 (DisallowedHost) before URL
+        # routing even runs - confirmed live: diode-reconciler's calls to
+        # /api/plugins/diode/default-branch/ 400'd with an empty body
+        # exactly matching this, independent of the URL path being correct.
+        - { key: "ALLOWED_HOSTS", value: "{{ netbox_fqdn }} localhost 127.0.0.1 netbox" }
 
     - name: Ensure redis passwords set
       ansible.builtin.lineinfile:
@@ -168,13 +231,22 @@
         - { path: "{{ netbox_install_dir }}/netbox-docker/env/redis-cache.env", pass: "{{ netbox_rediscachepass }}" }
 
 # --- Start NetBox ---
+# Explicit -f flags, not bare `docker compose` - once netbox_discovery_deploy.yml
+# (a separate playbook) has ever run, .env's COMPOSE_FILE points at a third
+# file (docker-compose.diode.yml) that swaps netbox/netbox-worker onto a
+# custom image built locally and never pushed anywhere. Bare `docker
+# compose pull` picks that up from .env and fails outright trying to pull
+# it from a registry - confirmed live ("pull access denied for
+# netbox-diode-custom"). Explicit -f flags override .env's COMPOSE_FILE
+# entirely, so this role only ever touches the two files it actually owns,
+# regardless of what the discovery playbook has layered on top.
 - name: Pull images
-  ansible.builtin.command: docker compose pull
+  ansible.builtin.command: docker compose -f docker-compose.yml -f docker-compose.override.yml pull
   args:
     chdir: "{{ netbox_install_dir }}/netbox-docker"
 
 - name: Start NetBox stack
-  ansible.builtin.command: docker compose up -d
+  ansible.builtin.command: docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
   args:
     chdir: "{{ netbox_install_dir }}/netbox-docker"
 

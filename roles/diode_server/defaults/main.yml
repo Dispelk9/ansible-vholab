@@ -150,8 +150,17 @@ diode_telemetry_environment: "production"
 diode_to_netbox_client_id: "diode-to-netbox"
 netbox_to_diode_client_id: "netbox-to-diode"
 
-# NetBox side, so the reconciler can call back into NetBox's API.
-netbox_diode_plugin_api_base_url: "http://netbox:8080/"
+# NetBox side, so the reconciler can call back into NetBox's API. Was
+# "http://netbox:8080/" (bare host root, trailing slash) - wrong on two
+# counts versus upstream's own sample.env
+# (NETBOX_DIODE_PLUGIN_API_BASE_URL=<http://NETBOX_HOST>/api/plugins/diode):
+# missing the plugin's own "/api/plugins/diode" URL namespace entirely, and
+# the trailing slash combined with the reconciler's own leading slash on
+# each request path produced a literal double slash
+# (http://netbox:8080//default-branch/), which NetBox's router rejected
+# with 400 Bad Request - confirmed live in diode-reconciler's logs. No
+# trailing slash here, to match upstream's exact convention.
+netbox_diode_plugin_api_base_url: "http://netbox:8080/api/plugins/diode"
 netbox_diode_plugin_skip_tls_verify: true
 
 diode_health_retries: 20
