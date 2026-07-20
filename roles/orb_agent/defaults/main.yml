@@ -36,6 +36,9 @@ orb_diode_client_id: "orb-agent"
 orb_discovery_targets:
   - "192.0.2.0/24"
 orb_discovery_schedule: "*/15 * * * *"
+# Minutes. Upstream's own default (5) is tight for a /24 even with
+# skip_host: false's ping-sweep early-out - give it headroom.
+orb_discovery_timeout: 15
 orb_discovery_scan_types:
   - connect
 orb_discovery_skip_host: true

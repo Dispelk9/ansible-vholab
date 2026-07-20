@@ -5,7 +5,7 @@
 # Schema reference:
 # https://github.com/netboxlabs/orb-agent/blob/develop/docs/configs/agent_yaml.md
 # https://github.com/netboxlabs/orb-agent/blob/develop/docs/backends/network_discovery.md
-version: "1.0"
+version: 1.0
 orb:
   config_manager:
     active: local
@@ -27,6 +27,7 @@ orb:
       discovery_1:
         config:
           schedule: "{{ orb_discovery_schedule }}"
+          timeout: {{ orb_discovery_timeout }}
           defaults:
             description: "Discovered by ansible-vholab"
             tags:

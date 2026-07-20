@@ -54,11 +54,14 @@ orb_image_tag: "2.11.0"
 # loaded into the play yet when diode_server's templates render.
 orb_diode_client_id: "orb-agent"
 
-# STILL A PLACEHOLDER - replace with the real network(s)/CIDR you have
-# permission to scan before flipping orb_dry_run to false. See
-# roles/orb_agent/defaults/main.yml for why this isn't guessed.
 orb_discovery_targets:
-  - "192.0.2.0/24"
   - "10.0.0.0/24"
+
+# Default (skip_host: true) maps to nmap -Pn, which treats every address in
+# a target CIDR as up and fully port-scans it regardless of whether
+# anything is actually listening. Over a /24 that's 256 full port scans
+# with no early-out, which blew through the policy's 5m timeout. Disabling
+# it lets nmap ping-sweep first and skip dead addresses.
+orb_discovery_skip_host: false
 
 orb_dry_run: true
