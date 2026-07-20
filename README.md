@@ -44,11 +44,13 @@ instead if you want a smaller blast radius than the full playbook.
 Before first run:
 - `cp host_vars/vhohetzner1/vault.yml.example host_vars/vhohetzner1/vault.yml`,
   fill in real secrets, `ansible-vault encrypt host_vars/vhohetzner1/vault.yml`.
-- `orb_discovery_targets` in `group_vars/vhodockers.yml` is a deliberate
-  non-routable placeholder (`192.0.2.0/24`) - replace with the real
-  network(s) you have permission to scan before setting `orb_dry_run: false`
-  (defaults to `true`: Orb Agent writes discovered inventory to
-  `/opt/netbox/discovery/orb/data/dry-run/` instead of calling Diode).
+- `orb_discovery_targets` in `group_vars/vhodockers.yml` defaults (role-level)
+  to a deliberate non-routable placeholder (`192.0.2.0/24`) - never set
+  `orb_dry_run: false` while it's still that placeholder (the
+  `orb_agent` role asserts this and will fail the play if you try). On this
+  host it's already been replaced with the real, permitted range
+  (`10.0.0.0/24`) and `orb_dry_run` is `false` - see "Orb Agent discovery"
+  below for how it actually runs.
 - `diode_nginx_bind_port` is `8280`, not the upstream default `8080` -
   `8080`/`8081` are already bound on this host by unrelated containers
   (`app-backend-1`/`app-frontend-1`), and `8180` (the first alternative
@@ -103,6 +105,42 @@ Re-running / redeploying:
   deployed by `netbox_deploy.yml`/`roles/netbox`). Those hold NetBox's real
   inventory data and are never recreated or reset by
   `netbox_discovery_deploy.yml`.
+
+Orb Agent discovery - running scans, timing, rescans:
+- Discovery is scheduler-driven, not manually invoked. `orb_discovery_schedule`
+  in `group_vars/vhodockers.yml` (default `*/15 * * * *`, every 15 min) is a
+  cron expression the agent evaluates internally - there's no `orb-agent scan
+  now` command in this deployment (`config_manager.active: local`, so there's
+  no fleet manager API to poke either).
+- On container start (deploy, restart, or recreate) it runs the policy
+  immediately - confirmed in logs, `"policy applied successfully"` is
+  followed within ~30s by `"running scanner"`. It then waits for the next
+  cron tick for subsequent runs.
+- `orb_discovery_timeout` (default 15 min, see
+  `roles/orb_agent/defaults/main.yml`) is the max a single scan is allowed to
+  run before nmap is killed and the policy logs an error instead of results.
+  Budget up to that long for a scan over a `/24` to finish, especially with
+  `orb_discovery_skip_host: false` (ping-sweeps first, still touches every
+  address).
+- **Watch a run**: `docker logs -f orb-agent` on vhodockers - look for
+  `"running scanner"` then either normal completion or a
+  `"nmap scan timed out"` error.
+- **Where results land**:
+  - `orb_dry_run: true` - JSON files under
+    `/opt/netbox/discovery/orb/data/dry-run/` on vhodockers, nothing sent
+    anywhere else.
+  - `orb_dry_run: false` (current setting) - sent to Diode over gRPC, which
+    reconciles it into NetBox. Check NetBox's own Diode plugin menu
+    (`127.0.0.1:8083`) for ingested/pending objects, not the filesystem.
+- **Trigger a rescan on demand** (don't wait for the next cron tick): restart
+  the container so it re-runs its start-of-life scan -
+  `cd /opt/netbox/discovery/orb && docker compose restart orb-agent`. A full
+  `--force-recreate` (or re-running `--tags orb_agent`, which now notifies a
+  recreate handler on any `agent.yaml`/`.env` change) also works and is
+  required anyway if you changed `orb_discovery_targets`, `schedule`, or any
+  other policy field - see the note above `roles/orb_agent/handlers/main.yml`
+  about `docker compose up -d` not detecting bind-mounted file content
+  changes on its own.
 
 If you do need to fully wipe and redeploy NetBox itself (not the discovery
 stack) - e.g. starting over from scratch - this is destructive and drops all

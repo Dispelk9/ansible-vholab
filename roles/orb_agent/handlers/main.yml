@@ -1,0 +1,11 @@
+---
+# docker compose up -d only recreates a container when it detects a change
+# in the service definition itself (image, ports, env_file path) - it never
+# hashes the *content* of bind-mounted files. agent.yaml and .env are both
+# bind-mounted, so editing them alone (without touching compose.yml) leaves
+# the running container untouched and stale. Force a recreate whenever any
+# of the three templates change so the new content actually takes effect.
+- name: Recreate orb-agent container
+  ansible.builtin.command: docker compose up -d --force-recreate orb-agent
+  args:
+    chdir: "{{ orb_dir }}"

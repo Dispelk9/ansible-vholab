@@ -64,4 +64,4 @@ orb_discovery_targets:
 # it lets nmap ping-sweep first and skip dead addresses.
 orb_discovery_skip_host: false
 
-orb_dry_run: true
+orb_dry_run: false

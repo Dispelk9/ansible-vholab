@@ -27,6 +27,7 @@
     group: root
     mode: "0600"
   no_log: true
+  notify: Recreate orb-agent container
 
 - name: Ship .env.example for reference
   ansible.builtin.template:
@@ -43,6 +44,7 @@
     owner: root
     group: root
     mode: "0640"
+  notify: Recreate orb-agent container
 
 - name: Template Orb Agent compose.yml
   ansible.builtin.template:
