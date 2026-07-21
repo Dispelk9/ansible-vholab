@@ -43,3 +43,22 @@ orb_discovery_scan_types:
   - connect
 orb_discovery_skip_host: true
 orb_discovery_fast_mode: false
+
+# snmp_discovery backend's policy - same target subnet as network_discovery
+# above (reused directly in agent.yaml.j2, not a separate targets var), but
+# its own cron schedule and its own timeout units. Device/interface/VLAN
+# inventory changes far less often than open ports do, hence the longer
+# 6h schedule rather than reusing orb_discovery_schedule.
+#
+# timeout here is in SECONDS (this backend's own field), NOT minutes like
+# orb_discovery_timeout above for network_discovery - different backend,
+# different units, do not conflate the two.
+orb_snmp_schedule: "0 */6 * * *"
+orb_snmp_timeout: 300
+
+# orb_snmp_username / orb_snmp_auth_protocol / orb_snmp_priv_protocol /
+# orb_snmp_port / orb_snmp_auth_passphrase / orb_snmp_priv_passphrase are
+# NOT defaulted here - they're shared with roles/snmp_agent (which
+# provisions this exact SNMPv3 user on vhohetzner1/vhohetzner2) and live in
+# group_vars/Hetzner/vars.yml + group_vars/Hetzner/vault.yml. See
+# roles/snmp_agent/defaults/main.yml for why.

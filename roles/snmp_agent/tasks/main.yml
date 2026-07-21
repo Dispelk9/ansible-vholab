@@ -1,0 +1,66 @@
+---
+- name: Assert required SNMPv3 vault secrets are present
+  ansible.builtin.assert:
+    that:
+      - orb_snmp_auth_passphrase is defined
+      - orb_snmp_auth_passphrase != "CHANGE-ME"
+      - orb_snmp_auth_passphrase | length >= 8
+      - orb_snmp_priv_passphrase is defined
+      - orb_snmp_priv_passphrase != "CHANGE-ME"
+      - orb_snmp_priv_passphrase | length >= 8
+      - snmp_agent_bind_ip is defined
+    fail_msg: >-
+      Copy group_vars/Hetzner/vault.yml.example to
+      group_vars/Hetzner/vault.yml, fill in real (>=8 char) passphrases, and
+      encrypt it with `ansible-vault encrypt group_vars/Hetzner/vault.yml` -
+      or snmp_agent_bind_ip is missing from this host's host_vars (must be
+      its own private-network IP, e.g. host_vars/vhohetzner1/vars.yml).
+  no_log: true
+
+- name: Install net-snmp agent
+  ansible.builtin.apt:
+    name: snmpd
+    state: present
+    update_cache: true
+
+- name: Check whether the SNMPv3 user is already provisioned
+  ansible.builtin.command: >-
+    grep -q '"{{ orb_snmp_username }}"' /var/lib/snmpd/snmpd.conf
+  register: _snmp_user_check
+  changed_when: false
+  failed_when: false
+
+- name: Stop snmpd before provisioning a new SNMPv3 user
+  ansible.builtin.systemd:
+    name: snmpd
+    state: stopped
+  when: _snmp_user_check.rc != 0
+
+- name: Provision the SNMPv3 user (net-snmp encrypts this in place on next start)
+  ansible.builtin.lineinfile:
+    path: /var/lib/snmpd/snmpd.conf
+    create: true
+    owner: root
+    group: root
+    mode: "0600"
+    line: >-
+      createUser {{ orb_snmp_username }} {{ orb_snmp_auth_protocol }}
+      "{{ orb_snmp_auth_passphrase }}" {{ orb_snmp_priv_protocol }}
+      "{{ orb_snmp_priv_passphrase }}"
+  when: _snmp_user_check.rc != 0
+  no_log: true
+
+- name: Template snmpd.conf (bind address + access control - no secrets in here)
+  ansible.builtin.template:
+    src: snmpd.conf.j2
+    dest: /etc/snmp/snmpd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart snmpd
+
+- name: Ensure snmpd is enabled and running
+  ansible.builtin.systemd:
+    name: snmpd
+    state: started
+    enabled: true

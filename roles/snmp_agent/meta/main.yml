@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: snmp_agent
+  description: "Installs net-snmp (snmpd) with an SNMPv3 authPriv-only read-only user, bound to the host's private-network IP, so orb_agent's snmp_discovery backend can poll it"
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "22.04"
+dependencies: []

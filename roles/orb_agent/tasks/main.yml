@@ -8,6 +8,21 @@
       network for real. Set orb_discovery_targets to your actual, permitted
       scan range in group_vars/vhodockers.yml before going live.
 
+- name: Assert SNMPv3 credentials for the snmp_discovery policy are set
+  ansible.builtin.assert:
+    that:
+      - orb_snmp_auth_passphrase is defined
+      - orb_snmp_auth_passphrase != "CHANGE-ME"
+      - orb_snmp_priv_passphrase is defined
+      - orb_snmp_priv_passphrase != "CHANGE-ME"
+    fail_msg: >-
+      orb_snmp_auth_passphrase/orb_snmp_priv_passphrase are missing or still
+      the placeholder value - copy group_vars/Hetzner/vault.yml.example to
+      group_vars/Hetzner/vault.yml, fill in real passphrases, and encrypt it
+      with `ansible-vault encrypt group_vars/Hetzner/vault.yml` (must match
+      what roles/snmp_agent provisioned on vhohetzner1/vhohetzner2).
+  no_log: true
+
 - name: Ensure Orb Agent directories exist
   ansible.builtin.file:
     path: "{{ item }}"

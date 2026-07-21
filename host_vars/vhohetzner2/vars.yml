@@ -1,0 +1,7 @@
+---
+# hetzner_terraform/main.tf pins this host's private-network IP explicitly
+# (hcloud_server.vho_hetzner2.network.ip) - kept in sync here, not derived
+# from ansible_facts, since roles/snmp_agent needs it before any fact
+# gathering could confirm it and a wrong guess would silently bind SNMP to
+# the wrong interface.
+snmp_agent_bind_ip: "10.0.0.2"

@@ -5,4 +5,5 @@
   - Hetzner
   roles:
   - common
+  - snmp_agent
   become: true

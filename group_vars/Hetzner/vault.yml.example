@@ -1,0 +1,17 @@
+# Copy this file to group_vars/Hetzner/vault.yml, fill in real values, then
+# encrypt it:
+#
+#   cp group_vars/Hetzner/vault.yml.example group_vars/Hetzner/vault.yml
+#   ansible-vault encrypt group_vars/Hetzner/vault.yml
+#
+# Generate strong random values with: openssl rand -base64 24
+# (net-snmp requires >=8 characters for both - roles/snmp_agent asserts this)
+#
+# Shared by both vhohetzner1 and vhohetzner2 (both members of the "Hetzner"
+# inventory group) - orb-agent (running on vhohetzner1/vhodockers) polls
+# both hosts with this single SNMPv3 credential, so it must be the same
+# passphrase pair on both ends. NEVER commit an unencrypted vault.yml - see
+# host_vars/vhohetzner1/vault.yml.example for the same convention.
+
+orb_snmp_auth_passphrase: "CHANGE-ME"
+orb_snmp_priv_passphrase: "CHANGE-ME"

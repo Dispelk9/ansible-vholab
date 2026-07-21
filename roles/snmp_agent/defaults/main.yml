@@ -1,0 +1,17 @@
+---
+# orb_snmp_username / orb_snmp_auth_protocol / orb_snmp_priv_protocol /
+# orb_snmp_port are defined in group_vars/Hetzner/vars.yml, not here - they
+# have to be visible to both this role (provisions the SNMPv3 user) and
+# roles/orb_agent (authenticates as that same user in its snmp_discovery
+# policy), which run in two different playbooks. See the comment there.
+#
+# orb_snmp_auth_passphrase / orb_snmp_priv_passphrase are secrets, defined
+# in group_vars/Hetzner/vault.yml (see vault.yml.example) - deliberately not
+# defaulted anywhere.
+#
+# Why SHA/AES-128 rather than the stronger SHA256/AES256 orb-agent's own
+# client also supports: stock Ubuntu net-snmp builds only reliably ship the
+# classic USM pair out of the box; AES-192/256 support depends on build
+# flags (Blumenthal-draft key localization) that aren't guaranteed present.
+# SHA-1 is dated but this is still authPriv (authenticated + encrypted) - a
+# world away from the v1/v2c community strings this deliberately avoids.

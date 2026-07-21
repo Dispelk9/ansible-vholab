@@ -1,0 +1,12 @@
+---
+# Shared between roles/snmp_agent (provisions the SNMPv3 user on
+# vhohetzner1/vhohetzner2) and roles/orb_agent (authenticates as this same
+# user/protocol pair in its snmp_discovery policy) - both roles run in
+# different playbooks (update_hetzner.yml vs netbox_discovery_deploy.yml),
+# but vhohetzner1 is a member of both the "Hetzner" and "vhodockers"
+# inventory groups, so this file is loaded either way. Keep the two roles'
+# defaults/main.yml comments pointing back here if you ever move this.
+orb_snmp_username: "orb-discovery"
+orb_snmp_auth_protocol: "SHA"
+orb_snmp_priv_protocol: "AES"
+orb_snmp_port: 161

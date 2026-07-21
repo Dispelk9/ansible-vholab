@@ -5,12 +5,14 @@
 # Schema reference:
 # https://github.com/netboxlabs/orb-agent/blob/develop/docs/configs/agent_yaml.md
 # https://github.com/netboxlabs/orb-agent/blob/develop/docs/backends/network_discovery.md
+# https://github.com/netboxlabs/orb-agent/blob/develop/docs/backends/snmp_discovery/README.md
 version: 1.0
 orb:
   config_manager:
     active: local
   backends:
     network_discovery:
+    snmp_discovery:
     common:
       diode:
         dry_run: {{ orb_dry_run | string | lower }}
@@ -38,3 +40,31 @@ orb:
           scan_types: {{ orb_discovery_scan_types | to_json }}
           skip_host: {{ orb_discovery_skip_host | string | lower }}
           fast_mode: {{ orb_discovery_fast_mode | string | lower }}
+    snmp_discovery:
+      discovery_1:
+        config:
+          schedule: "{{ orb_snmp_schedule }}"
+          timeout: {{ orb_snmp_timeout }}
+          defaults:
+            description: "SNMP discovered by ansible-vholab"
+            tags:
+              - net-discovery
+              - orb-agent
+              - snmp-discovery
+        scope:
+          targets:
+{% for t in orb_discovery_targets %}
+            - host: "{{ t }}"
+{% endfor %}
+          # SNMPv3 authPriv only - no v1/v2c community string is ever used
+          # here. This user is provisioned by roles/snmp_agent on
+          # vhohetzner1/vhohetzner2 - keep the two roles' credentials in
+          # sync (see group_vars/Hetzner/vars.yml + vault.yml).
+          authentication:
+            protocol_version: "SNMPv3"
+            security_level: "authPriv"
+            username: "{{ orb_snmp_username }}"
+            auth_protocol: "{{ orb_snmp_auth_protocol }}"
+            auth_passphrase: "{{ orb_snmp_auth_passphrase }}"
+            priv_protocol: "{{ orb_snmp_priv_protocol }}"
+            priv_passphrase: "{{ orb_snmp_priv_passphrase }}"
