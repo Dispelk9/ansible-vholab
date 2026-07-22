@@ -24,8 +24,15 @@
     update_cache: true
 
 - name: Check whether the SNMPv3 user is already provisioned
+  # Matches on a bare `usmUser` line, not the username itself: net-snmp
+  # persists the localized entry with the security name hex-encoded (e.g.
+  # 0x6f72622d... for "orb-discovery"), never as literal quoted text, so a
+  # literal-text grep for the username always reports "not provisioned" even
+  # after a successful localization - discovered live, see docs/ for the
+  # full story. This role only ever provisions one user, so "does a usmUser
+  # line exist at all" is an equally valid, encoding-agnostic proxy.
   ansible.builtin.command: >-
-    grep -q '"{{ orb_snmp_username }}"' /var/lib/snmpd/snmpd.conf
+    grep -q '^usmUser ' /var/lib/snmp/snmpd.conf
   register: _snmp_user_check
   changed_when: false
   failed_when: false
@@ -36,13 +43,24 @@
     state: stopped
   when: _snmp_user_check.rc != 0
 
+# Path is /var/lib/snmp/snmpd.conf - NOT /var/lib/snmpd/ (no trailing "d" on
+# the directory). net-snmp's actual persistent directory (confirmed live via
+# `snmpd -DALL`: "persistent path:/var/lib/snmp") is a different path from
+# both /etc/snmp/snmpd.conf (the static ACL file below) and the superficially
+# similar /var/lib/snmpd/ - writing there is a silent no-op: snmpd never
+# reads that directory at all, so a createUser line placed there sits
+# forever un-processed and every query fails "Unknown user name", no matter
+# how many times snmpd is restarted or what the file's permissions are (hit
+# live, cost a full debugging session on both hosts before `snmpd -DALL`
+# surfaced the real path it was actually using). No owner/group/mode is set
+# here deliberately - /var/lib/snmp is created and permissioned correctly by
+# the snmpd package itself (confirmed live: the running Debian-snmp process
+# already reads/rewrites this exact file successfully), so managing
+# ownership here risks re-breaking access rather than fixing anything.
 - name: Provision the SNMPv3 user (net-snmp encrypts this in place on next start)
   ansible.builtin.lineinfile:
-    path: /var/lib/snmpd/snmpd.conf
+    path: /var/lib/snmp/snmpd.conf
     create: true
-    owner: root
-    group: root
-    mode: "0600"
     line: >-
       createUser {{ orb_snmp_username }} {{ orb_snmp_auth_protocol }}
       "{{ orb_snmp_auth_passphrase }}" {{ orb_snmp_priv_protocol }}

@@ -92,6 +92,45 @@ bind port (`127.0.0.1:8083`), and certbot settings.
 ansible-playbook -i inventory netbox_deploy.yml
 ```
 
+#### NetBox database backups
+
+NetBox's own PostgreSQL database is the real, non-reconstructable inventory
+data (unlike Diode's own postgres/redis - OAuth state + reconciler dedup
+state, deliberately never backed up, see the Diode section below).
+`roles/netbox` installs an automated backup for it:
+
+- **Script**: `/usr/local/bin/netbox-db-backup.sh` - `pg_dump`s the
+  `postgres` service via `docker compose exec` (over its local socket, no
+  password needed), pipes straight through gzip (disk space on this host
+  is tight), verifies the resulting archive with `gzip -t` and a non-empty
+  check before keeping it, then prunes anything older than
+  `netbox_db_backup_retention_days` (default 14 days).
+- **Schedule**: daily cron, `netbox_db_backup_cron_hour`/`_minute` (default
+  02:30). Logs to `/var/log/netbox-db-backup.log`.
+- **Self-tested on every deploy**: `netbox_deploy.yml` runs the script once
+  immediately (not just installs the cron job) and asserts a valid
+  `netbox_*.sql.gz` file actually landed in `netbox_db_backup_dir`
+  (default `/opt/netbox/backups/postgres`) - a broken backup mechanism
+  fails the play instead of silently sitting unnoticed until the day you
+  need it.
+- **Restore**:
+
+      cd /opt/netbox/netbox-docker
+      gunzip -c /opt/netbox/backups/postgres/netbox_netbox_<timestamp>.sql.gz | \
+        docker compose exec -T postgres psql -U netbox -d netbox
+
+  (stop the `netbox`/`netbox-worker` containers first if restoring onto a
+  live, already-running stack, so nothing writes to the DB mid-restore.)
+
+If you need to fully wipe and redeploy **NetBox itself** (not the discovery
+stack) - e.g. starting over from scratch - take a backup first (either wait
+for/trigger the automated one above, or run
+`/usr/local/bin/netbox-db-backup.sh` by hand), then:
+
+    cd /opt/netbox/netbox-docker
+    docker compose down --volumes --remove-orphans
+    # then re-run netbox_deploy.yml to recreate it from scratch
+
 ### Diode + Orb Agent discovery (around NetBox) — `netbox_discovery_deploy.yml`
 
 Layers NetBoxLabs' Diode ingestion pipeline, the NetBox Diode plugin, and
@@ -165,27 +204,27 @@ blast radius than the full playbook.
 
 #### Re-running / redeploying
 
-- Every run of `netbox_discovery_deploy.yml` (or `--tags diode_server`) tears
-  down and recreates the Diode server's own containers **and volumes**
-  (`docker compose down --volumes --remove-orphans` in
-  `/opt/netbox/discovery/diode`) before redeploying - see
-  `roles/diode_server/tasks/reset.yml`. This is deliberate and safe: nothing
-  in Diode's own postgres/redis is source-of-truth data (that's NetBox's
-  job), it's just OAuth2 client state and reconciler dedup state, both fully
-  reconstructable from `.env` / `oauth2/client/client-credentials.json` on
-  the next `up`.
-- This matters because Postgres only ever runs its
+- **`diode_server_reset_on_deploy` defaults to `false`** - a normal
+  `netbox_discovery_deploy.yml` (or `--tags diode_server`) run preserves the
+  Diode server's own containers and volumes across redeploys, same as any
+  other idempotent role. It does **not** wipe anything by default.
+- Set it to `true` - deliberately, e.g. `-e diode_server_reset_on_deploy=true`,
+  not left on permanently in `group_vars/vhodockers.yml` - only as an
+  explicit recovery action: `docker compose down --volumes --remove-orphans`
+  in `/opt/netbox/discovery/diode` (see `roles/diode_server/tasks/reset.yml`)
+  before redeploying. This is safe to do because nothing in Diode's own
+  postgres/redis is source-of-truth data (that's NetBox's job) - it's just
+  OAuth2 client state and reconciler dedup state, both fully reconstructable
+  from `.env` / `oauth2/client/client-credentials.json` on the next `up` -
+  but it does mean re-authenticating Orb/NetBox against Diode afterward, so
+  it's opt-in rather than automatic.
+- **When you actually need it**: Postgres only ever runs its
   `/docker-entrypoint-initdb.d` init scripts once, against an empty data
   directory. If a deploy fails partway through (e.g. a missing env var), the
   data volume is left initialized-but-incomplete - simply fixing the config
   and re-running `docker compose up -d` by hand will **not** retry that
-  init script, so it stays broken forever without a clean volume. The
-  automatic reset is what makes re-running the playbook after a config fix
-  actually work.
-- Set `diode_server_reset_on_deploy: false` in `group_vars/vhodockers.yml`
-  once the stack is validated and stable, if you'd rather preserve Diode's
-  state across future re-runs (e.g. you don't want to re-authenticate
-  Orb/NetBox on every playbook run).
+  init script, so it stays broken forever without a clean volume. That's
+  the (and only the) scenario `diode_server_reset_on_deploy: true` is for.
 - To reset by hand without Ansible:
   `cd /opt/netbox/discovery/diode && docker compose down --volumes --remove-orphans`
 - **Scope**: none of the above ever touches the actual NetBox containers
@@ -196,19 +235,75 @@ blast radius than the full playbook.
   inventory data and are never recreated or reset by
   `netbox_discovery_deploy.yml`.
 
-If you need to fully wipe and redeploy **NetBox itself** (not the discovery
-stack) - e.g. starting over from scratch - this is destructive and drops all
-inventory data in NetBox's own database. `roles/netbox` has no backup step
-of its own (the `netbox_backup_dir` used elsewhere in this repo is only for
-the diode_server/netbox_diode_plugin roles' own config file backups -
-`.env`, `plugins.py`, `client-credentials.json` - not NetBox's database), so
-take one manually first:
-`docker compose exec netbox /opt/netbox/netbox/manage.py dumpdata > backup.json`,
-or a `pg_dump` of `netbox-docker-postgres-1`. Once you have a backup:
+#### Docker image pinning
 
-    cd /opt/netbox/netbox-docker
-    docker compose down --volumes --remove-orphans
-    # then re-run netbox_deploy.yml to recreate it from scratch
+Every image in this stack is pinned to an exact tag - no service floats on
+`:latest`:
+
+- `oryd/hydra:v26.2.0` - already pinned in the fetched upstream compose file.
+- `docker.io/postgres:16-alpine` (Diode's own postgres) - left as-is; only
+  floats within Postgres's own backwards-compatible patch releases, not a
+  meaningful reproducibility gap.
+- `netboxlabs/diode-ingester`/`diode-reconciler`/`diode-auth` - the fetched
+  compose file reads `${DIODE_TAG:-latest}` for all three; `DIODE_TAG` is
+  set explicitly in `env.j2` (`diode_tag` in `roles/diode_server/defaults/main.yml`,
+  currently `2.1.0` - the exact version "latest" resolved to at the moment
+  `diode_server_compose_ref` was pinned, confirmed via the GitHub commit API
+  + Docker Hub's tag timestamps).
+- `nginx`/`redis/redis-stack-server` - hardcoded to `:latest` in the fetched
+  compose file with **no** override env var, unlike the three above. Pinned
+  instead via an `image:` override in `docker-compose.override.yml.j2` (the
+  one file in the Diode stack we author ourselves) - see `diode_nginx_image`
+  / `diode_redis_image` in defaults.
+- `netboxlabs/orb-agent:2.11.0` (`orb_image_tag`) - already pinned.
+- NetBox itself: `netbox_repo_branch` in `roles/netbox/defaults/main.yml`
+  is an exact **tag** (`5.0.2`), not the floating `release` branch it used
+  to track - that role runs `update: yes` on every single run, so tracking
+  a moving branch meant any future re-run (even one only meant to fix an
+  unrelated nginx typo) would silently pull whatever's newest at that
+  moment and upgrade NetBox itself, not a side service.
+
+Re-pinning any of these is a deliberate action (pick a specific new
+tag/version and update the corresponding var) - never done by just leaving
+something on `latest`/a floating branch and letting it drift.
+
+#### Client Credentials page won't show Orb's (or Diode's own) client - this is expected
+
+NetBox's Diode plugin adds a "Client Credentials" page
+(Diode menu -> Client Credentials) that calls `diode-auth`'s `GET /clients`
+- but that endpoint filters strictly by an `Owner` field, defaulting (in
+upstream's own `DefaultTokenOwnershipProvider`) to the constant
+`"diode/user"` for anything created **through that same API** (i.e. via
+that page's own "Add Client Credential" button).
+
+The three clients this stack actually depends on -
+`diode-to-netbox`/`netbox-to-diode`/`orb-agent` - are provisioned a
+different way: `diode-auth-bootstrap`'s `bootstrap-clients.sh` (baked into
+the `netboxlabs/diode-auth` image) calls the raw `hydra create
+oauth2-client` CLI directly against Hydra's admin API from
+`oauth2/client/client-credentials.json` (see
+`roles/diode_server/templates/client-credentials.json.j2`) - bypassing
+`diode-auth`'s REST layer, and its owner-tagging, entirely. No `--owner`
+flag is ever passed, so none of these three ever get `Owner: "diode/user"`
+in Hydra - the list page's owner-filtered query structurally cannot match
+them.
+
+**This is a visibility gap in that one management page, not an auth
+problem** - Hydra honors these clients for token issuance regardless of
+`Owner` (confirmed: this is exactly how discovered inventory is actually
+reaching NetBox today). To inspect/manage them, go around the NetBox UI
+straight to Hydra - this is the one command that's always authoritative
+about what Diode clients actually exist, regardless of which of the three
+ways (GUI, `authmanager`, the bootstrap file) created them:
+
+    docker exec diode-hydra-1 hydra list oauth2-clients --endpoint http://127.0.0.1:4445 --format json \
+      | jq -r '.items[] | "\(.client_id)\t\(.client_name)\t\(.scope)\t\(.created_at)"'
+
+See `docs/diode-clients-registry.md` for what each one is actually *for*
+(the command above tells you what exists, not why) and
+`docs/diode-adding-oauth2-clients.md` for how to add more - including a
+hard warning about a way to break an existing one that looked safe but
+wasn't.
 
 #### Orb Agent discovery — running scans, timing, rescans
 
@@ -217,10 +312,22 @@ or a `pg_dump` of `netbox-docker-postgres-1`. Once you have a backup:
   cron expression the agent evaluates internally - there's no `orb-agent scan
   now` command in this deployment (`config_manager.active: local`, so there's
   no fleet manager API to poke either).
-- On container start (deploy, restart, or recreate) it runs the policy
-  immediately - confirmed in logs, `"policy applied successfully"` is
-  followed within ~30s by `"running scanner"`. It then waits for the next
-  cron tick for subsequent runs.
+- On container start (deploy, restart, or recreate), **`network_discovery`**
+  runs its policy immediately - confirmed in logs, `"policy applied
+  successfully"` is followed within ~30s by `"running scanner"`. It then
+  waits for the next cron tick for subsequent runs.
+- **`snmp_discovery` does NOT do this** - despite logging the same
+  `"policy applied successfully"` line on every restart, it only actually
+  probes on its own strict `orb_snmp_schedule` cron tick (default `0 */6 * *
+  *` - four times a day), never on container start/restart. Restarting Orb
+  Agent to force an immediate SNMP re-scan (as the pattern above would
+  suggest) does nothing - confirmed live by grepping a full day's logs for
+  the backend-specific `"starting SNMP probe scan"` line, which only ever
+  appeared at exact 6-hour boundaries, never immediately after any of
+  several restarts in between. See
+  `docs/snmp-discovery-does-not-run-on-restart.md` for how this was found
+  and how to force an immediate run if you need one (temporarily tighten
+  `orb_snmp_schedule`, apply, then revert).
 - `orb_discovery_timeout` (default 15 min, see
   `roles/orb_agent/defaults/main.yml`) is the max a single `network_discovery`
   scan is allowed to run before nmap is killed and the policy logs an error

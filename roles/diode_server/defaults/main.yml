@@ -49,6 +49,31 @@ diode_server_compose_url: >-
 diode_server_nginx_conf_url: >-
   https://raw.githubusercontent.com/netboxlabs/diode/{{ diode_server_compose_ref }}/diode-server/docker/nginx/nginx.conf
 
+# The fetched docker-compose.yaml (never edited in place - see
+# fetch_compose.yml) pins oryd/hydra to an exact tag already, but
+# diode-ingester/diode-reconciler/diode-auth/diode-auth-bootstrap all read
+# ${DIODE_TAG:-latest} - i.e. they float on "latest" unless this is set.
+# 2.1.0 is what "latest" resolved to at the exact moment
+# diode_server_compose_ref above was pinned (both the commit and the
+# 2.1.0/"latest" image pushes landed within the same 3 minutes on
+# 2026-07-08 - confirmed via the GitHub commit API and Docker Hub's tag
+# list). Re-pin both together: when you bump diode_server_compose_ref,
+# check https://hub.docker.com/r/netboxlabs/diode-ingester/tags for
+# whatever "latest" resolves to at that new commit's timestamp.
+diode_tag: "2.1.0"
+
+# ingress-nginx and redis have no override env var in the fetched compose
+# file at all (unlike the DIODE_TAG-driven services above) - they're
+# pinned instead via an `image:` override in
+# docker-compose.override.yml.j2, the one file in this stack we do author
+# ourselves. postgres (docker.io/postgres:16-alpine in the fetched file)
+# is left alone - "16-alpine" only floats on patch releases within a
+# single major version, which is an acceptable, deliberate pin already
+# (Postgres patch releases are backwards-compatible; a runaway major-version
+# bump is the actual reproducibility risk, and that's already blocked).
+diode_nginx_image: "nginx:1.30.4-alpine"
+diode_redis_image: "redis/redis-stack-server:7.4.0-v8"
+
 # Where the Diode server's client-facing gRPC endpoint (fronted by nginx)
 # listens. Internal container port is 80 - confirmed against the fetched
 # nginx.conf (`listen 80;`) and the base docker-compose.yaml's own
@@ -177,14 +202,20 @@ diode_server_oneshot_services:
 
 netbox_backup_dir: "{{ netbox_install_dir }}/backups"
 
-# Every run tears down and recreates the Diode server's own containers +
-# volumes (postgres/redis data included) before redeploying - see
-# tasks/reset.yml. Safe by design: nothing in Diode's own postgres/redis is
-# source-of-truth data (that's NetBox's job), it's just OAuth2 state and
-# reconciler dedup state, both fully reconstructable. This also sidesteps
-# postgres only ever running /docker-entrypoint-initdb.d once - without a
-# clean volume, a previously-failed deploy (e.g. from missing env vars)
-# stays broken forever even after fixing the config, because the init
-# script never gets a chance to re-run. Set to false once the stack is
-# validated and stable if you'd rather preserve state across re-runs.
-diode_server_reset_on_deploy: true
+# false (default/safe): a normal re-run of this role preserves the Diode
+# server's own containers + volumes (postgres/redis data - OAuth2 client
+# state, reconciler dedup state) across redeploys, same as any other
+# idempotent role.
+#
+# Set to true (e.g. `-e diode_server_reset_on_deploy=true`, or temporarily
+# in group_vars) only as a deliberate, explicit recovery action - not a
+# routine setting - if a previous deploy failed partway through (e.g. a
+# missing env var) and left the stack broken. Postgres only ever runs its
+# /docker-entrypoint-initdb.d init scripts once, against an empty data
+# directory - fixing the config and re-running `docker compose up -d`
+# alone will NOT retry that init script, so a partially-initialized volume
+# stays broken forever without a clean wipe. This is safe to do because
+# nothing in Diode's own postgres/redis is source-of-truth data (that's
+# NetBox's job) - but it does mean re-authenticating Orb/NetBox against
+# Diode afterward, so it's opt-in rather than the default.
+diode_server_reset_on_deploy: false

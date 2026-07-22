@@ -286,6 +286,49 @@
   ansible.builtin.command: nginx -t
   changed_when: false
 
+# --- NetBox's own PostgreSQL backups (real inventory data - unlike Diode's
+# own postgres/redis, this is not reconstructable if lost) ---
+- name: Ensure NetBox DB backup directory exists
+  ansible.builtin.file:
+    path: "{{ netbox_db_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install NetBox DB backup script
+  ansible.builtin.template:
+    src: netbox-db-backup.sh.j2
+    dest: /usr/local/bin/netbox-db-backup.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create daily cronjob for NetBox DB backup
+  ansible.builtin.cron:
+    name: "Daily NetBox PostgreSQL DB backup"
+    minute: "{{ netbox_db_backup_cron_minute }}"
+    hour: "{{ netbox_db_backup_cron_hour }}"
+    job: "/usr/local/bin/netbox-db-backup.sh >> /var/log/netbox-db-backup.log 2>&1"
+
+- name: Run the NetBox DB backup once now to verify it actually works
+  ansible.builtin.command: /usr/local/bin/netbox-db-backup.sh
+  changed_when: true
+
+- name: Confirm at least one verified backup file exists
+  ansible.builtin.find:
+    paths: "{{ netbox_db_backup_dir }}"
+    patterns: "netbox_*.sql.gz"
+  register: _netbox_db_backups
+
+- name: Fail if the backup script didn't actually produce a file
+  ansible.builtin.assert:
+    that: _netbox_db_backups.matched > 0
+    fail_msg: >-
+      /usr/local/bin/netbox-db-backup.sh ran without error but
+      {{ netbox_db_backup_dir }} has no netbox_*.sql.gz file - investigate
+      before trusting the cron schedule to protect this data.
+
 # # --- Optional: create a superuser (hands off) ---
 # docker compose exec netbox /opt/netbox/netbox/manage.py createsuperuser
 # - name: Create NetBox superuser (optional)

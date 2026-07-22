@@ -2,7 +2,17 @@
 # Where to install netbox-docker
 netbox_install_dir: /opt/netbox
 netbox_repo: "https://github.com/netbox-community/netbox-docker.git"
-netbox_repo_branch: "release"
+# An exact tag, NOT the floating "release" branch this used to track -
+# "Update netbox-docker repo to the latest release" below runs `update:
+# yes` on every single run of this role, so tracking a moving branch meant
+# any future re-run (even one only meant to fix an unrelated nginx typo)
+# would silently pull whatever's newest on "release" at that moment and
+# upgrade NetBox itself - the actual production app, not a side service.
+# 5.0.2 is "release"'s HEAD as of 2026-07-21 (verified: same commit SHA,
+# 5adc62fe...). Re-pin deliberately by choosing a specific new tag from
+# https://github.com/netbox-community/netbox-docker/tags, not by
+# reverting to "release".
+netbox_repo_branch: "5.0.2"
 
 # How NetBox is exposed locally (for nginx upstream)
 netbox_bind_ip: "127.0.0.1"
@@ -28,3 +38,17 @@ netbox_certbot_key_type: "ecdsa"
 # Secrets handling
 # Set to true to generate secrets on the target and save them in env files.
 netbox_generate_secrets: true
+
+# --- NetBox's own PostgreSQL database backups ---
+# This is NetBox's real source-of-truth inventory data - unlike Diode's own
+# postgres/redis (see roles/diode_server, fully reconstructable, never
+# backed up on purpose) losing this is a genuine, unrecoverable data-loss
+# event. Dumped via `docker compose exec postgres pg_dump` (over the
+# container's local socket, no password needed - not `docker exec` by
+# container name, which is fragile against Compose's naming/scaling
+# behavior) straight through gzip, since disk space on this host is
+# already tight (see README).
+netbox_db_backup_dir: "{{ netbox_install_dir }}/backups/postgres"
+netbox_db_backup_retention_days: 14
+netbox_db_backup_cron_hour: "2"
+netbox_db_backup_cron_minute: "30"

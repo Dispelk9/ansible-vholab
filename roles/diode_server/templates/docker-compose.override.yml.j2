@@ -15,6 +15,11 @@
 #    client-credentials.json.j2) shadows that subdir with just our
 #    credentials file, so the script genuinely isn't there. Without this
 #    override the container crash-loops (exit 1, restart, repeat) forever.
+# 4. Pins ingress-nginx and redis to an exact tag - the fetched
+#    docker-compose.yaml hardcodes both as ":latest" with no override env
+#    var (unlike diode-ingester/reconciler/auth, which read ${DIODE_TAG} -
+#    see env.j2). This is the only place they can be pinned without
+#    editing the fetched file in place.
 #
 # Upstream service healthchecks are sparse (only postgres has one as of
 # this writing) - rather than guess at container-exec healthchecks that may
@@ -27,8 +32,12 @@ networks:
 
 services:
   "{{ diode_frontend_service }}":
+    image: "{{ diode_nginx_image }}"
     ports:
       - "{{ diode_nginx_bind_ip }}:{{ diode_nginx_bind_port }}:{{ diode_nginx_internal_port }}"
+
+  redis:
+    image: "{{ diode_redis_image }}"
 
   diode-auth-bootstrap:
     command: ["/bin/sh", "/etc/config/oauth2/bootstrap-clients.sh"]
